@@ -147,7 +147,7 @@ number of handled arguments."
     (when (not= nil (. t 2))
       (table.insert out second))
     (if (. fn-forms callee)
-        (view-fn-args t view inspector indent2 start-indent out callee)
+        (view-fn-args t view inspector indent2 start-indent out)
         3)))
 
 (fn match? [callee]
@@ -194,7 +194,7 @@ number of handled arguments."
 (fn preserve-same-line? [t i indent out viewed depth]
   (and (<= (+ indent (length (table.concat out)) (length viewed)) 80)
        (<= depth 3) (not (fennel.comment? (. t (- i 1))))
-       (and (originally-same-lines? t 1 i) (not (viewed:find "\n")))))
+       (originally-same-lines? t 1 i) (not (viewed:find "\n"))))
 
 (fn view-body [t view inspector start-indent out callee]
   "Insert arguments to a call to a special that takes body arguments."
@@ -267,7 +267,7 @@ number of handled arguments."
       (view-pairwise-if t view inspector indent out)
       (not (originally-same-lines? t 2 3))
       (view-body t view inspector (+ start-indent 2) out callee)
-      (view-call t view inspector indent out callee)))
+      (view-call t view inspector indent out)))
 
 (fn newline-if-ends-in-comment [out indent]
   (when (: (. out (length out)) :match "^ *;[^\n]*$")
@@ -314,7 +314,7 @@ number of handled arguments."
       (.. (table.concat (icollect [_ c (ipairs cs)]
                           (tostring c))
                         (.. "\n" (string.rep " " indent)))
-          (.. "\n" (string.rep " " indent)) x)
+          "\n" (string.rep " " indent) x)
       x))
 
 (fn shorthand-pair? [k v]
