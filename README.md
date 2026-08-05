@@ -75,6 +75,9 @@ full formatter.
 Send patches or bug reports directly to the maintainer or the
 [Fennel mailing list](https://lists.sr.ht/%7Etechnomancy/fennel).
 
+Please see [my contributing guide](https://technomancy.us/contributing)
+for more details.
+
 ## License
 
 Copyright © 2019-2024 Phil Hagelberg and contributors
