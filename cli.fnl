@@ -39,8 +39,11 @@
 (case arg
   [:--version] (print (.. "fnlfmt version " version))
   [:--fix & filenames] (each [_ filename (pairs filenames)] (fix filename))
+  [:--indent & filenames] (each [_ filename (pairs filenames)]
+                            (let [{: indent} (require :indentation)]
+                              (with-open [f (io.open filename)]
+                                (print (indent (f:read :*all))))))
   [:--check & filenames] (check-files filenames)
   (where (or [:--help] ["-?"] [:-h])) (help)
-  [filename nil] (io.stdout:write
-                  (pick-values 1 (format-file filename options)))
+  [filename nil] (io.stdout:write (pick-values 1 (format-file filename options)))
   _ (help))

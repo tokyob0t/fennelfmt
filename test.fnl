@@ -1,4 +1,6 @@
 (local fmt (require :fnlfmt))
+(local indent (require :indentation))
+
 (local cases [:top
               :table
               :call
@@ -38,9 +40,14 @@
                           cases))]
   (let [filename (.. :tests/ name :.fnl)
         expected (read filename)
-        actual (fmt.format-file filename {})]
-    (if (= actual expected)
+        actual (fmt.format-file filename {})
+        actual-indent (indent.indent expected)]
+    (if (and (= actual expected)
+             (or (= actual-indent expected)
+                 (= filename "tests/skip.fnl")))
         (set pass (+ pass 1))
+        (= actual expected)
+        (failed name filename actual-indent)
         (failed name filename actual))))
 
 (print (: "%s passed, %s failed" :format pass (length failures)))

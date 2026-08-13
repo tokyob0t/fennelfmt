@@ -1,7 +1,8 @@
 # History of user-visible changes
 
-## 0.3.3 / ???
+## 0.4.0 / ???
 
+* Add support for `--indent`.
 * Preserve notation for strings and numbers.
 
 ## 0.3.2 / 2024-09-02

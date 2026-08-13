@@ -20,6 +20,16 @@
 ;;
 ;; "this is none of the above."
 
+(local fennel (require :fennel))
+(local syntax (fennel.syntax))
+
+(fn line-pos [line pos]
+  (let [line (line:sub 1 pos)]
+    (case (. _G :utf8)
+      {: len} (len line)
+      ;; at least handle the most common case under old lua
+      _ (length (line:gsub "λ" "l")))))
+
 (fn identify-line [line pos stack]
   "For the given line, identify the kind of form it opens, if any.
 Returns nil if the given line doesn't open any form; in that case the caller
@@ -49,41 +59,15 @@ should continue looking to previous lines."
         (continue)
         ;; if we hit an opening table char, we're in a table!
         (or (= "[" char) (= "{" char))
-        (values :table pos)
+        (values :table (line-pos line pos))
         ;; if we hit an open paren, we're in a call!
         (= "(" char)
-        (values :call pos line)
+        (values :call (line-pos line pos) line)
         :else
         (continue))))
 
 (fn symbol-at [line pos]
   (: (line:sub pos) :match "[^%s]+"))
-
-;; Some special forms have their own indentation rules, but specials which
-;; aren't on this list are indented like normal function calls.
-
-(local body-specials {:let true
-                      :fn true
-                      :lambda true
-                      "λ" true
-                      :when true
-                      :eval-compiler true
-                      :comment true
-                      :for true
-                      :each true
-                      :while true
-                      :macro true
-                      :case true
-                      :case-try true
-                      :match true
-                      :match-try true
-                      :doto true
-                      :with-open true
-                      :collect true
-                      :icollect true
-                      :fcollect true
-                      :accumulate true
-                      :faccumulate true})
 
 (fn remove-comment [line in-string? pos]
   (if (< (length line) pos)
@@ -95,25 +79,30 @@ should continue looking to previous lines."
       ;; could hit false positives in multi-line strings
       (remove-comment line in-string? (+ pos 1))))
 
+(fn body-form? [callee]
+  (or (?. syntax callee :body-form?) (callee:find "%.with-")
+      (callee:find :^with-) (callee:find "%.def") (callee:find :^def)))
+
 (fn identify-indent-type [lines last stack]
   "Distinguish between forms that are part of a table vs a function call.
 This function iterates backwards thru a table of lines to find where the current
 form begins. Also returns details about the position in the line."
   (let [line (remove-comment (or (. lines last) "") false 1)]
-    (match (identify-line line (length line) stack)
+    (case (identify-line line (length line) stack)
       (:table pos) (values :table pos)
-      (:call pos line) (let [function-name (symbol-at line (+ pos 1))]
-                         (if (. body-specials function-name)
-                             (values :body-special (- pos 1))
-                             (values :call (- pos 1) function-name)))
-      (_ ? (< 1 last)) (identify-indent-type lines (- last 1) stack))))
+      (:call pos) (let [callee-name (symbol-at line (+ pos 1))]
+                    (if (body-form? callee-name)
+                        (values :body-special (- pos 1))
+                        (values :call (- pos 1) callee-name)))
+      _ (if (< 1 last)
+            (identify-indent-type lines (- last 1) stack)))))
 
 (fn indentation [lines prev-line-num]
   "Return indentation for a line, given a table of lines and a number offset.
 The prev-line-num indicates the line previous to the current line, which will be
 looked up in the table of lines. Returns the column number to indent to."
   ;; three kinds of indentation:
-  (match (identify-indent-type lines prev-line-num [])
+  (case (identify-indent-type lines prev-line-num [])
     (:table opening) opening
     (:body-special prev-indent) (+ prev-indent 2)
     (:call prev-indent function-name) (+ prev-indent (length function-name) 2)
@@ -130,6 +119,7 @@ looked up in the table of lines. Returns the column number to indent to."
   (let [lines []]
     (each [line (code:gmatch "([^\n]*)\n")]
       (table.insert lines (indent-line line lines (length lines))))
+    (table.insert lines "")
     (table.concat lines "\n")))
 
 {: indent : indentation}
