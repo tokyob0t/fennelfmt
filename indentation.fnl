@@ -25,7 +25,7 @@
 
 (fn line-pos [line pos]
   (let [line (line:sub 1 pos)]
-    (case (. _G :utf8)
+    (case _G.utf8
       {: len} (len line)
       ;; at least handle the most common case under old lua
       _ (length (line:gsub "λ" "l")))))
@@ -120,6 +120,11 @@ looked up in the table of lines. Returns the column number to indent to."
     (each [line (code:gmatch "([^\n]*)\n")]
       (table.insert lines (indent-line line lines (length lines))))
     (table.insert lines "")
-    (table.concat lines "\n")))
+    (let [result (table.concat lines "\n")]
+      (values result (not= result code)))))
 
-{: indent : indentation}
+(fn indent-file [filename]
+  (with-open [f (assert (io.open filename))]
+    (indent (f:read :*all))))
+
+{: indent : indent-file : indentation}

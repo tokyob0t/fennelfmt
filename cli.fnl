@@ -3,6 +3,7 @@
 (set debug.traceback fennel.traceback)
 
 (local {: format-file : version} (require :fnlfmt))
+(local {: indent-file} (require :indentation))
 
 (fn help []
   (print "Usage: fnlfmt [--no-comments] [--fix] [--check] FILENAME...")
@@ -18,19 +19,19 @@
     (set options.no-comments true)
     (table.remove arg i)))
 
-(fn check-file [filename]
-  (if (select 2 (format-file filename options))
+(fn check-file [filename f]
+  (if (select 2 (f filename options))
       (io.stderr:write (string.format "Not formatted: %s\n" filename))
       true  ))
 
-(fn check-files [filenames]
+(fn check-files [filenames f]
   (-> (accumulate [ok? true _ filename (ipairs filenames)]
-        (and (check-file filename) ok?))
+        (and (check-file filename f) ok?))
       (#(if $ 0 1))
       (os.exit)))
 
-(fn fix [filename]
-  (let [(new changed?) (format-file filename options)]
+(fn fix [filename f]
+  (let [(new changed?) (f filename options)]
     (when changed? ; prevent unnecessary writes
       (let [f (assert (io.open filename :w))]
         (f:write new)
@@ -38,12 +39,13 @@
 
 (case arg
   [:--version] (print (.. "fnlfmt version " version))
-  [:--fix & filenames] (each [_ filename (pairs filenames)] (fix filename))
-  [:--indent & filenames] (each [_ filename (pairs filenames)]
-                            (let [{: indent} (require :indentation)]
-                              (with-open [f (io.open filename)]
-                                (print (indent (f:read :*all))))))
-  [:--check & filenames] (check-files filenames)
+  [:--fix & filenames] (each [_ filename (pairs filenames)]
+                         (fix filename format-file))
+  [:--check & filenames] (check-files filenames format-file)
+  [:--indent filename nil] (print (indent-file filename))
+  [:--fix-indent & filenames] (each [_ filename (pairs filenames)]
+                                (fix filename indent-file))
+  [:--check-indent & filenames] (check-files filenames indent-file)
   (where (or [:--help] ["-?"] [:-h])) (help)
   [filename nil] (io.stdout:write (pick-values 1 (format-file filename options)))
   _ (help))
