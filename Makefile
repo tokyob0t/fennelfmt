@@ -43,7 +43,4 @@ uninstall:
 	rm -f $(DESTDIR)$(BIN_DIR)/fnlfmt
 	rm -f $(DESTDIR)$(MAN_DIR)/fnlfmt.1
 
-check:
-	fennel-ls --check $(SRC) indentation.fnl
-
-.PHONY: selfhost test count roundtrip clean lint install check
+.PHONY: selfhost test count roundtrip clean lint install

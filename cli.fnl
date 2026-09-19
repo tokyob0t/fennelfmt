@@ -42,7 +42,7 @@
   [:--fix & filenames] (each [_ filename (pairs filenames)]
                          (fix filename format-file))
   [:--check & filenames] (check-files filenames format-file)
-  [:--indent filename nil] (print (indent-file filename))
+  [:--indent filename nil] (print (pick-values 1 (indent-file filename)))
   [:--fix-indent & filenames] (each [_ filename (pairs filenames)]
                                 (fix filename indent-file))
   [:--check-indent & filenames] (check-files filenames indent-file)

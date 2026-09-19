@@ -8,6 +8,7 @@ Format your Fennel!
     $ ./fnlfmt mycode.fnl # prints formatted code to standard out
     $ ./fnlfmt --fix mycode.fnl # replaces the file with formatted code
     $ ./fnlfmt --check mycode.fnl # checks if the file is formatted
+    $ ./fnlfmt --indent mycode.fnl # print with indentation fixed only
     $ curl localhost:8080/my-file.fnl | ./fnlfmt - # pipe to stdin
 
 You can skip reformatting of top-level forms by placing a comment
@@ -80,6 +81,6 @@ for more details.
 
 ## License
 
-Copyright © 2019-2024 Phil Hagelberg and contributors
+Copyright © 2019-2026 Phil Hagelberg and contributors
 
 Released under the MIT license; see LICENSE.
