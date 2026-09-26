@@ -353,11 +353,11 @@ know what to do with : foo shorthand notation, and it doesn't emit comments."
                     (view-pair t view inspector indent mt k))
         oneline (.. "{" (table.concat pair-strs " ") "}")]
     (if (or (oneline:match "\n") (?. mt :comments :last 1)
-            (> (+ indent (length oneline)) inspector.line-length))
+            (< inspector.line-length (+ indent (length oneline))))
         (view-multiline-kv pair-strs indent (?. mt :comments :last))
         oneline)))
 
-(fn walk-tree [root f custom-iterator]
+(fn walk-tree [root f ?custom-iterator]
   "Walks a tree (like the AST), invoking f(node, idx, parent) on each node.
 When f returns a truthy value, recursively walks the children."
   (fn walk [iterfn parent idx node]
@@ -365,7 +365,7 @@ When f returns a truthy value, recursively walks the children."
       (each [k v (iterfn node)]
         (walk iterfn node k v))))
 
-  (walk (or custom-iterator pairs) nil nil root)
+  (walk (or ?custom-iterator pairs) nil nil root)
   root)
 
 (fn set-fennelview-metamethod [_idx form]
