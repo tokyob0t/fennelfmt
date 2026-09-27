@@ -9,7 +9,7 @@ BIN_DIR ?= $(PREFIX)/bin
 MAN_DIR ?= $(PREFIX)/share/man/man1
 LUA_LIB_DIR ?= $(PREFIX)/share/lua/$(LUA_VERSION)
 
-SRC=cli.fnl fnlfmt.fnl
+SRC=cli.fnl fnlfmt.fnl indentation.fnl
 fnlfmt: $(SRC)
 	echo "#!/usr/bin/env $(LUA)" > $@
 	$(FENNEL) $(FENNEL_OPTS) --compile $< >> $@

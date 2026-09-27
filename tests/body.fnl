@@ -5,9 +5,13 @@
 ;; what
 
 (do
+  ;; TODO: uncomment this
+  ;; (local closers ["("])
+
   (fn abc []
     "this docstring
-has a newline in it"
+has a newline in it
+with three lines"
     (do
       (set fail (+ fail 1))
       (print :FAIL)
@@ -41,6 +45,12 @@ has a newline in it"
 
 (m.with-connection [socket-connection "https://fennel-lang.org/see?abc=foo"]
   (socket-connection:read-all))
+
+(fn identify-line [line pos stack]
+  (let [x "\\"]
+    (print :x x))
+  (let [y "\\\\"]
+    (print :y y)))
 
 (fn spaced-out-fns []
   (fn f1 [] :f1)

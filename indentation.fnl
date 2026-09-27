@@ -4,7 +4,9 @@
 ;; middle of being edited.
 ;; Roughly the strategy is to find whether the current line is part of a table,
 ;; a "body" special form call, a regular function call, or none of the above.
-;; Each of these are indented differently.
+;; Each of these are indented differently. Unfortunately this strategy doesn't
+;; do great when multi-line strings interact with strings that have parens in
+;; them; it's a heuristic, but for better accuracy a full parser is needed.
 ;;
 ;; Examples:
 ;;
@@ -30,6 +32,11 @@
       ;; at least handle the most common case under old lua
       _ (length (line:gsub "λ" "l")))))
 
+(fn count-backslashes [line pos count]
+  (if (= (line:sub pos pos) "\\")
+      (count-backslashes line (- pos 1) (+ count 1))
+      count))
+
 (fn identify-line [line pos stack]
   "For the given line, identify the kind of form it opens, if any.
 Returns nil if the given line doesn't open any form; in that case the caller
@@ -40,8 +47,7 @@ should continue looking to previous lines."
         continue #(identify-line line (- pos 1) stack)]
     (if (= 0 pos)
         nil
-        ;; TODO: backslashed delimiters aren't consistently handled
-        (= (line:sub (- pos 1) (- pos 1)) "\\")
+        (= 1 (math.fmod (count-backslashes line (- pos 1) 0) 2))
         (continue)
         ;; if we find the delimiter we're looking for, stop looking
         (= looking-for char)
