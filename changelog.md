@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## 0.4.0 / ???
+## 0.4.0 / 2026-09-27
 
 * Add support for `--indent`, `--check-indent`, and `--fix-indent`.
 * Preserve notation for strings and numbers.

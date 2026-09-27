@@ -448,4 +448,4 @@ When f returns a truthy value, recursively walks the children."
     (let [formatted (table.concat out "\n")]
       (values formatted (not= formatted original)))))
 
-{: fnlfmt : format-file :version :0.3.3-dev}
+{: fnlfmt : format-file :version :0.4.0}
