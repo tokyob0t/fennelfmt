@@ -139,6 +139,14 @@ override), so it does not depend on a system-wide Fennel install. Run
 sources. `make check` also needs `fennel-ls` on `PATH`; it falls back to the
 Mason install location used by Neovim.
 
+Releases are cut by pushing a version tag, for example:
+
+    $ git tag 0.5.0
+    $ git push origin 0.5.0
+
+The `Release` workflow runs `make check`, builds the self-contained `fnlfmt`
+script, and attaches it together with the man page to the GitHub release.
+
 ## Description
 
 The goal of `fnlfmt` is *not* to be The One Formatter that all Fennel
