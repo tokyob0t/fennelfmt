@@ -455,6 +455,18 @@
                        (string.rep " " 16) ":value3 3})\n")]
       (let [(out code) (format f)]
         (check :comment/align (and (= 0 code) (= out expected)))))
+    ;; The widest line may be the closing one; align with it too.
+    (let [f (file "align-close.fnl"
+                  (.. "(local example {:value1 1 ;; one\n"
+                      "                :value100 100 ;; hundred\n"
+                      "                :value2 2 ;; two\n"
+                      "                :value3 3}) ;; end\n"))
+          expected (.. "(local example {:value1 1     ;; one\n"
+                       "                :value100 100 ;; hundred\n"
+                       "                :value2 2     ;; two\n"
+                       "                :value3 3})   ;; end\n")]
+      (let [(out code) (format f)]
+        (check :comment/align-closing (and (= 0 code) (= out expected)))))
     ;; A comment on its own line inside the table must not inflate the
     ;; alignment column for the trailing comments around it.
     (let [f (file "mixed.fnl"
@@ -488,6 +500,13 @@
       (let [(out code) (format f)]
         (check :comment/after-close
                (and (= 0 code) (= out "(local x {:a 1}) ;; final\n")))))
+    ;; A semicolon inside a multi-line string is not a comment.
+    (let [contents (.. "(fn example []\n"
+                       "  \"Returns nil if the line doesn't open a form; in that case\n"
+                       "the caller continues.\")\n")
+          f (file "string.fnl" contents)]
+      (let [(out code) (format f)]
+        (check :comment/multiline-string (and (= 0 code) (= out contents)))))
     (os.execute (.. "rm -rf '" root "'"))))
 
 (each [_ name (ipairs (if (< 0 (length arg))
