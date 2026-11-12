@@ -388,21 +388,30 @@ number of handled arguments."
   (accumulate [n 0 _ record (ipairs pair-records)]
     (+ n (length record.trailing))))
 
+(fn pair-end-column [text indent]
+  "Column where the last line of a rendered pair ends. Multi-line pair text
+already carries its own absolute indentation; single-line text starts at the
+table's content indent."
+  (if (text:find "\n")
+      (last-line-length text)
+      (+ indent (length text))))
+
 (fn align-trailing-comments [pair-records indent]
   "Attach trailing comments to their pair. When several pairs have one, align
 them one column after the widest pair in the table."
   (let [count (trailing-count pair-records)
-        max-width (if (< 1 count)
-                      (accumulate [width 0 _ record (ipairs pair-records)]
-                        (if (< 0 (length record.trailing))
-                            (math.max width (last-line-length record.text))
-                            width))
-                      nil)]
+        max-column (if (< 1 count)
+                       (accumulate [column 0 _ record (ipairs pair-records)]
+                         (if (< 0 (length record.trailing))
+                             (math.max column
+                                       (pair-end-column record.text indent))
+                             column))
+                       nil)]
     (each [_ record (ipairs pair-records)]
       (when (< 0 (length record.trailing))
-        (let [width (last-line-length record.text)
-              spaces (if max-width
-                         (math.max 1 (- (+ max-width 1) width))
+        (let [column (pair-end-column record.text indent)
+              spaces (if max-column
+                         (math.max 1 (- (+ max-column 1) column))
                          1)]
           (each [i c (ipairs record.trailing)]
             (set record.text (.. record.text

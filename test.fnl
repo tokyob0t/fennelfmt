@@ -455,6 +455,15 @@
                        (string.rep " " 16) ":value3 3})\n")]
       (let [(out code) (format f)]
         (check :comment/align (and (= 0 code) (= out expected)))))
+    ;; A comment on its own line inside the table must not inflate the
+    ;; alignment column for the trailing comments around it.
+    (let [f (file "mixed.fnl"
+                  (.. "{:value1 1 ;; one\n :value2 2 ;; two\n :value3 3\n"
+                      " ;; own\n :value4 4 ;; four\n :value5 5}\n"))
+          expected (.. "{:value1 1 ;; one\n :value2 2 ;; two\n :value3 3\n"
+                       " ;; own\n :value4 4 ;; four\n :value5 5}\n")]
+      (let [(out code) (format f)]
+        (check :comment/own-line-no-inflation (and (= 0 code) (= out expected)))))
     ;; A single trailing comment stays on its pair's line.
     (let [f (file "single.fnl" "{:a 1 ;; one\n :b 2}\n")]
       (let [(out code) (format f)]
