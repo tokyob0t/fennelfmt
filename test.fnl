@@ -439,6 +439,48 @@
            (and (= 1 code)
                 (not= nil (out:find "--stdin cannot be combined" 1 true))))))
 
+(fn comment-tests []
+  (let [root (tmpdir)
+        file (fn [name contents] (write-into root name contents))
+        format (fn [filename] (run (.. "./fnlfmt --no-config '" filename "'")))]
+    ;; Several trailing comments align in one column.
+    (let [f (file "align.fnl"
+                  (.. "(local example {:value1 1 ;; one\n" (string.rep " " 16)
+                      ":value100 100 ;; hundred\n" (string.rep " " 16)
+                      ":value2 2 ;; two\n" (string.rep " " 16) ":value3 3})\n"))
+          expected (.. "(local example {:value1 1" (string.rep " " 5)
+                       ";; one\n" (string.rep " " 16)
+                       ":value100 100 ;; hundred\n" (string.rep " " 16)
+                       ":value2 2" (string.rep " " 5) ";; two\n"
+                       (string.rep " " 16) ":value3 3})\n")]
+      (let [(out code) (format f)]
+        (check :comment/align (and (= 0 code) (= out expected)))))
+    ;; A single trailing comment stays on its pair's line.
+    (let [f (file "single.fnl" "{:a 1 ;; one\n :b 2}\n")]
+      (let [(out code) (format f)]
+        (check :comment/single
+               (and (= 0 code) (= out "{:a 1 ;; one\n :b 2}\n")))))
+    ;; A comment on its own line stays on its own line.
+    (let [f (file "own.fnl" "{:a 1\n ;; own\n :b 2}\n")]
+      (let [(out code) (format f)]
+        (check :comment/own-line
+               (and (= 0 code) (= out "{:a 1\n ;; own\n :b 2}\n")))))
+    ;; A comment after a top-level form stays attached to it.
+    (let [f (file "top.fnl" "(print 1) ;; trailing\n")]
+      (let [(out code) (format f)]
+        (check :comment/top-level
+               (and (= 0 code) (= out "(print 1) ;; trailing\n")))))
+    (let [f (file "top-own.fnl" "(print 1)\n;; own\n(print 2)\n")]
+      (let [(out code) (format f)]
+        (check :comment/top-level-own
+               (and (= 0 code) (= out "(print 1)\n;; own\n(print 2)\n")))))
+    ;; And so does a comment after a closing table/call.
+    (let [f (file "closing.fnl" "(local x {:a 1}) ;; final\n")]
+      (let [(out code) (format f)]
+        (check :comment/after-close
+               (and (= 0 code) (= out "(local x {:a 1}) ;; final\n")))))
+    (os.execute (.. "rm -rf '" root "'"))))
+
 (each [_ name (ipairs (if (< 0 (length arg))
                           arg
                           cases))]
@@ -458,7 +500,8 @@
   (config-tests)
   (classification-tests)
   (option-tests)
-  (io-tests))
+  (io-tests)
+  (comment-tests))
 
 (print (: "%s passed, %s failed" :format pass (length failures)))
 (when (not= 0 (length failures))

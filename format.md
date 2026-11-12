@@ -16,6 +16,10 @@ foo : bar}` shorthand notation where possible.
 Comments that go after code on a line should have one semicolon, but
 comments which start a line should have at least two; more can be used
 for section headers. This is not currently enforced by `fnlfmt`.
+Trailing comments stay on the line where they were written, and when
+several key/value pairs in a table have trailing comments they are
+aligned in one column. Comments that start their own line keep their own
+line.
 
 There are three ways that calls (aka lists) can be formatted. The
 default style used for functions and most macros is to put successive
