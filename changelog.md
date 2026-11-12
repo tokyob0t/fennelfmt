@@ -1,7 +1,14 @@
 # History of user-visible changes
 
-## Unreleased
+## 0.6.0 / 2026-11-12
 
+* Rename the project to `fennelfmt`. The binary, Lua module, and man page are
+  now `fennelfmt`; the project config file is `.fennelfmt.fnl` and the
+  environment variable is `FENNELFMT_CONFIG`. The legacy `;; fnlfmt: skip`
+  comment is still accepted.
+* Remove the user-level config file (`~/.config/...`). Configuration is only
+  read from `--config`, `FENNELFMT_CONFIG`, or the nearest `.fennelfmt.fnl`
+  in the file's directory tree.
 * Keep trailing comments on the same line as the form, key, or value they
   follow instead of moving them to their own line. Consecutive trailing
   comments are aligned in one column after formatting, using the widest

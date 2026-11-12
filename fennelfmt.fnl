@@ -1,4 +1,4 @@
-;;; fnlfmt.fnl --- The Fennel Formatter
+;;; fennelfmt.fnl --- The Fennel Formatter
 
 ;; https://git.sr.ht/~technomancy/fnlfmt
 
@@ -23,7 +23,7 @@
 (var current-classifier nil)
 
 ;; Source lines of the file being formatted, used to tell whether a comment
-;; shared a line with code. Nil when fnlfmt is called directly on an AST.
+;; shared a line with code. Nil when fennelfmt is called directly on an AST.
 (var current-source-lines nil)
 
 (fn inspector-classifier [inspector]
@@ -94,7 +94,7 @@ at the end of the line, so multi-line strings are not mistaken for comments."
   (select 2 (string.gsub text "\n" "")))
 
 (fn excluded-output-lines [out skipped-elements]
-  "Map output line numbers covered by verbatim `;; fnlfmt: skip` slices."
+  "Map output line numbers covered by verbatim `;; fennelfmt: skip` slices."
   (let [excluded {}]
     (var line 1)
     (each [index text (ipairs out)]
@@ -580,7 +580,14 @@ When f returns a truthy value, recursively walks the children."
   (and (s:find "^[-%w?^_!$%&*+./|<=>]+$")
        (not (s:find "^[-?^_!$%&*+./@|<=>%\\]+$"))))
 
-(fn fnlfmt [ast ?settings]
+(fn skip-comment? [ast]
+  "Recognize the new skip comment and the legacy fnlfmt one."
+  (and (fennel.comment? ast)
+       (let [text (tostring ast)]
+         (or (= text (.. ";; " config.project-name ": skip"))
+             (= text ";; fnlfmt: skip")))))
+
+(fn fennelfmt [ast ?settings]
   "Return a formatted representation of ast."
   (let [settings (or ?settings {})
         classifier (classify.build settings)
@@ -630,7 +637,7 @@ When f returns a truthy value, recursively walks the children."
           parser (-> (fennel.stringStream original)
                      (fennel.parser filename
                                     {:comments (not no-comments)
-                                     :plugins [{:name "fnlfmt"
+                                     :plugins [{:name "fennelfmt"
                                                 :parse-form parse-form
                                                 :versions "^1%."}]}))
           out []
@@ -653,7 +660,7 @@ When f returns a truthy value, recursively walks the children."
                 (table.insert out (original:sub ast.bytestart ast.byteend))
                 (tset skipped-elements (length out) true)
                 (set skip-next? false))
-              (= (fennel.comment ";; fnlfmt: skip") ast)
+              (skip-comment? ast)
               (do
                 (set skip-next? true)
                 (table.insert out "")
@@ -661,7 +668,7 @@ When f returns a truthy value, recursively walks the children."
               (do
                 (when (and prev-ast (space-out-forms? prev-ast ast))
                   (table.insert out ""))
-                (table.insert out (fnlfmt ast settings))
+                (table.insert out (fennelfmt ast settings))
                 (set skip-next? false)))
           (set prev-ast ast))
         (set current-source-lines previous-source-lines))
@@ -675,4 +682,4 @@ When f returns a truthy value, recursively walks the children."
                           formatted)]
         (values formatted (not= formatted original) original)))))
 
-{: fnlfmt : format-file :version :0.5.0}
+{: fennelfmt : format-file :version :0.6.0}

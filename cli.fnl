@@ -4,14 +4,14 @@
 
 (local config (require :config))
 (local diff (require :diff))
-(local {: format-file : version} (require :fnlfmt))
+(local {: format-file : version} (require :fennelfmt))
 (local {: indent-file} (require :indentation))
 
 (fn help []
-  (print "Usage: fnlfmt [--no-comments] [--diff|--fix|--check] FILENAME...")
-  (print "       fnlfmt [--no-comments] --indent FILENAME")
-  (print "       fnlfmt [--fix-indent|--check-indent] FILENAME...")
-  (print "       fnlfmt --print-config [FILENAME]")
+  (print "Usage: fennelfmt [--no-comments] [--diff|--fix|--check] FILENAME...")
+  (print "       fennelfmt [--no-comments] --indent FILENAME")
+  (print "       fennelfmt [--fix-indent|--check-indent] FILENAME...")
+  (print "       fennelfmt --print-config [FILENAME]")
   (print "")
   (print "With --fix, --check, or --diff, multiple files can be specified.")
   (print "With --fix, formats all the files in-place;")
@@ -21,8 +21,8 @@
   (print "needs formatting;")
   (print "otherwise prints the formatted file to stdout.")
   (print "")
-  (print "Configuration is read from the nearest .fnlfmt.fnl, from")
-  (print "$FNLFMT_CONFIG, or from ~/.config/fnlfmt/config.fnl.")
+  (print "Configuration is read from the nearest .fennelfmt.fnl or from")
+  (print "$FENNELFMT_CONFIG. Use --config PATH to select a file explicitly.")
   (print "")
   (print "Use - or --stdin to read from standard input.")
   (print "")
@@ -52,7 +52,7 @@
 (var quiet? false)
 
 (fn usage-error [message]
-  (io.stderr:write (.. "fnlfmt: " message "\n\n"))
+  (io.stderr:write (.. "fennelfmt: " message "\n\n"))
   (help)
   (os.exit 1))
 
@@ -174,7 +174,7 @@
         (os.exit 0))
       show-version?
       (do
-        (print (.. "fnlfmt version " version))
+        (print (.. "fennelfmt version " version))
         (os.exit 0))
       print-config?
       (do
@@ -208,5 +208,5 @@
 
 (let [(ok? err) (pcall main)]
   (when (not ok?)
-    (io.stderr:write (.. "fnlfmt: " (tostring err) "\n"))
+    (io.stderr:write (.. "fennelfmt: " (tostring err) "\n"))
     (os.exit 1)))

@@ -1,4 +1,4 @@
-;; fnlfmt configuration for this repository.
+;; fennelfmt configuration for this repository.
 ;; Every key is set to its default value so the full surface is visible.
 ;;
 ;; :forms replaces the built-in classification table; the entries below are

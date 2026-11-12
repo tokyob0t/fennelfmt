@@ -17,16 +17,16 @@
   (+ prev-indent (length function-name) 2))
 
 (fn *macros*.pretty-macrodebug [expr return-string?]
-  "Patched version of Fennel's macrodebug that calls fnlfmt on expanded form."
+  "Patched version of Fennel's macrodebug that calls fennelfmt on expanded form."
   (let [warn (fn [msg ...]
                (io.stderr:write (.. "Warning: " msg "\n"))
                ...)
-        fmt (match (pcall require :fnlfmt)
-              (fmt-ok {: fnlfmt}) fnlfmt
+        fmt (match (pcall require :fennelfmt)
+              (fmt-ok {: fennelfmt}) fennelfmt
               (->> (match (pcall require :fennel)
                      (ok {: view}) view
                      tostring)
-                   (warn "Failed to load fnlfmt; try checking package.path")))
+                   (warn "Failed to load fennelfmt; try checking package.path")))
         out (fmt (macroexpand expr _SCOPE))]
     (if return-string?
         out

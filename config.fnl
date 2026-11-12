@@ -1,4 +1,4 @@
-;; config.fnl --- configuration discovery and validation for fnlfmt
+;; config.fnl --- configuration discovery and validation for fennelfmt
 ;;
 ;; Configuration is data, not code: it is parsed with Fennel's parser and
 ;; validated here, never evaluated. This keeps project configs safe to read
@@ -11,9 +11,8 @@
 (local fennel (require :fennel))
 (local classify (require :classify))
 
-(local project-name :fnlfmt)
+(local project-name :fennelfmt)
 (local config-filename (.. "." project-name ".fnl"))
-(local user-config-filename (.. project-name "/config.fnl"))
 (local env-var (.. (string.upper project-name) "_CONFIG"))
 
 (local defaults {:version 1
@@ -81,15 +80,6 @@
         (set found candidate)))
     (set dir (parent dir)))
   found)
-
-(fn user-config []
-  (let [xdg (os.getenv "XDG_CONFIG_HOME")
-        home (os.getenv "HOME")
-        base (if (and xdg (not= "" xdg)) xdg
-                 (and home (not= "" home)) (.. home "/.config"))]
-    (when base
-      (let [path (.. base "/" user-config-filename)]
-        (when (file-exists? path) path)))))
 
 (local parse-cache {})
 
@@ -201,10 +191,9 @@ file, command line."
         env-path (os.getenv env-var)
         path (if options.no-config nil options.config options.config
                  (and env-path (not= "" env-path)) env-path
-                 (or (nearest-config (if (= filename "-")
-                                         (or (os.getenv "PWD") ".")
-                                         (dirname (absolute filename))))
-                     (user-config)))
+                 (nearest-config (if (= filename "-")
+                                     (or (os.getenv "PWD") ".")
+                                     (dirname (absolute filename)))))
         _ (when (and path (not (file-exists? path)))
             (error (.. "configuration file not found: " path) 0))
         config (if path (validate (load path) path) {})
@@ -244,7 +233,7 @@ file, command line."
                :infer-macros?]
         width (accumulate [n 0 _ key (ipairs order)]
                 (math.max n (length key)))
-        lines [(.. "fnlfmt configuration for " filename)
+        lines [(.. "fennelfmt configuration for " filename)
                (.. "config file: " (or path "none"))]]
     (each [_ key (ipairs order)]
       (let [value (. settings key)

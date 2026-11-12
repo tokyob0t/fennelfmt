@@ -1,28 +1,28 @@
-.TH FNLFMT 1
+.TH FENNELFMT 1
 
 .SH NAME
-fnlfmt \- a code formatter for Fennel
+fennelfmt \- a code formatter for Fennel
 
 .SH SYNOPSIS
-.B fnlfmt
+.B fennelfmt
 [\fB--check\fR] |
 [\fB--diff\fR] |
 [\fB--fix\fR] |
 [\fB--no\-comments\fR] FILENAME...
 .br
-.B fnlfmt
+.B fennelfmt
 \fB--indent\fR FILENAME
 .br
-.B fnlfmt
+.B fennelfmt
 [\fB--check\-indent\fR] |
 [\fB--fix\-indent\fR] FILENAME...
 
 .SH DESCRIPTION
 This manual page documents briefly the
-.B fnlfmt
+.B fennelfmt
 command.
 
-.B fnlfmt
+.B fennelfmt
 is a code formatter for Fennel code.
 
 .SH OPTIONS
@@ -86,18 +86,16 @@ Print the effective configuration and where each value came from, then exit.
 .SH CONFIGURATION
 
 Configuration is optional and disabled by default. Settings live in a
-.B .fnlfmt.fnl
+.B .fennelfmt.fnl
 file written as Fennel data; it is parsed and validated, never evaluated.
 Exactly one file is selected, without merging: the path given to
 .BR \-\-config ,
 else the path in the
-.B FNLFMT_CONFIG
+.B FENNELFMT_CONFIG
 environment variable, else the nearest
-.B .fnlfmt.fnl
-found by walking up from the formatted file's directory, else
-.B $XDG_CONFIG_HOME/fnlfmt/config.fnl
-(or
-.BR ~/.config/fnlfmt/config.fnl ).
+.B .fennelfmt.fnl
+found by walking up from the formatted file's directory. There is no
+user-level configuration file.
 .PP
 Command line flags such as
 .B \-\-no\-comments
@@ -188,7 +186,7 @@ if less than ideal, is at least not objectionable. Currently the
 indentation decisions it makes are great, but it occasionally puts
 newlines in places that a human would not.
 .PP
-For the most part, fnlfmt follows established lisp conventions when
+For the most part, fennelfmt follows established lisp conventions when
 determining how to format a given piece of code. Key/value tables are
 shown with each key/value pair on its own line, unless they are small
 enough to all fit on one line. Sequential tables similarly have each
@@ -237,7 +235,7 @@ the line length; see the CONFIGURATION section above.
 .IP \(bu 2
 Comments will not be wrapped.
 .IP \(bu 2
-When using fnlfmt as a library, it may modify the AST argument.
+When using fennelfmt as a library, it may modify the AST argument.
 .IP \(bu 2
 Function argument lists will be displayed one-per-line if they can't
 all fit on one line.

@@ -15,7 +15,7 @@ foo : bar}` shorthand notation where possible.
 
 Comments that go after code on a line should have one semicolon, but
 comments which start a line should have at least two; more can be used
-for section headers. This is not currently enforced by `fnlfmt`.
+for section headers. This is not currently enforced by `fennelfmt`.
 Trailing comments stay on the line where they were written, and when
 several key/value pairs in a table have trailing comments they are
 aligned in one column. Comments that start their own line keep their own
@@ -50,7 +50,7 @@ The indentation for `fn` and `lambda` are similar, except they accept an
 optional name before their arglist.
 
 By default, third-party macros are treated this way if their name starts
-with `def`, `with-`, `fn/`, or `λ/`. A `.fnlfmt.fnl` file can add or
+with `def`, `with-`, `fn/`, or `λ/`. A `.fennelfmt.fnl` file can add or
 override those classifications for macros that use different naming
 conventions; see [Configuration](#configuration).
 
@@ -59,12 +59,12 @@ will attempt to pair off their pattern/condition clauses with the body
 on the same line. If that can't fit, it falls back to one-form-per-line.
 
 ```fennel
-(case (pcall require :fnlfmt)
-  (fmt-ok {: fnlfmt}) fnlfmt
+(case (pcall require :fennelfmt)
+  (fmt-ok {: fennelfmt}) fennelfmt
   _ (->> (case (pcall require :fennel)
            (ok {: view}) view
            tostring)
-         (warn "Failed to load fnlfmt; try checking package.path")))
+         (warn "Failed to load fennelfmt; try checking package.path")))
 
 (if (not b) nil
     done? (values true retval)
@@ -95,7 +95,7 @@ opaque name the way a keyword/symbol/enum might in the latter case.
 Similarly with numbers, sometimes hexadecimal notation will be more
 appropriate for the task at hand, and sometimes underscores to
 separate out thousands/millions/etc will improve readability. A
-mechanical process like `fnlfmt` should not change this; it will
+mechanical process like `fennelfmt` should not change this; it will
 retain whatever formatting choices were present in the original input
 where possible.
 
@@ -114,7 +114,7 @@ be one line if the original code had them as one-liners.
 ## Configuration
 
 The line length defaults to 80 columns and can be changed with a
-`.fnlfmt.fnl` file; see the [README](README.md#configuration) for
+`.fennelfmt.fnl` file; see the [README](README.md#configuration) for
 discovery rules and the full list of settings. Body indentation defaults
 to 2 columns, wrapped call arguments align under the first argument, and
 output ends with a newline; `:indent`, `:align-calls?`, and
@@ -124,5 +124,5 @@ macros opt into the styles described above through `:extra-forms`,
 and all other behavior match upstream `fnlfmt` exactly; a config file can
 only change what it names or overrides.
 
-The repository's own [`.fnlfmt.fnl`](.fnlfmt.fnl) lists every key and the
+The repository's own [`.fennelfmt.fnl`](.fennelfmt.fnl) lists every key and the
 full default classification table as a reference.

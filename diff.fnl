@@ -1,4 +1,4 @@
-;; diff.fnl --- minimal unified diff for fnlfmt --diff
+;; diff.fnl --- minimal unified diff for fennelfmt --diff
 ;;
 ;; This is deliberately small: it uses a greedy nearest-line match instead of
 ;; a full Myers implementation. The output is a valid unified diff with three

@@ -2,7 +2,7 @@
   "Returns a greeting for the given name."
   (.. "Hello, " name "!"))
 
-;; fnlfmt: skip
+;; fennelfmt: skip
 (lambda print-greeting [greeting]
   "Prints a greeting."
   (print greeting))
