@@ -231,20 +231,21 @@ number of handled arguments."
     (table.insert out viewed)
     (+ start-indent (length (viewed:match "[^\n]*$")))))
 
-(fn view-call [t view inspector start-indent out]
+(fn view-call [t view inspector indent0 out ?wrap-indent]
   "Insert arguments to a normal function call. "
-  (var indent start-indent)
-  (for [i 2 (length t)]
-    (table.insert out " ")
-    (set indent (+ indent 1))
-    (let [viewed (view (. t i) inspector (- indent 1))]
-      ;; Attempt to fit as many args on a single line until it gets too long.
-      (if (or (fennel.comment? (. t (- i 1)))
-              (and (line-exceeded? inspector indent viewed) (not= 2 i)))
-          (set indent (view-with-newline view inspector out t i start-indent))
-          (do
-            (table.insert out viewed)
-            (set indent (+ indent (length (viewed:match "[^\n]*$")))))))))
+  (let [wrap-indent (or ?wrap-indent indent0)]
+    (var indent indent0)
+    (for [i 2 (length t)]
+      (table.insert out " ")
+      (set indent (+ indent 1))
+      (let [viewed (view (. t i) inspector (- indent 1))]
+        ;; Attempt to fit as many args on a single line until it gets too long.
+        (if (or (fennel.comment? (. t (- i 1)))
+                (and (line-exceeded? inspector indent viewed) (not= 2 i)))
+            (set indent (view-with-newline view inspector out t i wrap-indent))
+            (do
+              (table.insert out viewed)
+              (set indent (+ indent (length (viewed:match "[^\n]*$"))))))))))
 
 (fn view-pairwise-if [t view inspector indent out]
   (table.insert out (.. " "
@@ -266,12 +267,14 @@ number of handled arguments."
                         (+ i 3)
                         (+ i 2)) view)))
 
-(fn view-maybe-body [t view inspector indent start-indent out callee]
-  (if (pairwise-if? inspector t indent 2 view)
-      (view-pairwise-if t view inspector indent out)
-      (not (originally-same-lines? t 2 3))
-      (view-body t view inspector (+ start-indent 2) out callee)
-      (view-call t view inspector indent out)))
+(fn view-maybe-body [t view inspector indent start-indent out callee wrap]
+  (let [classifier (inspector-classifier inspector)]
+    (if (pairwise-if? inspector t indent 2 view)
+        (view-pairwise-if t view inspector indent out)
+        (not (originally-same-lines? t 2 3))
+        (view-body t view inspector (+ start-indent classifier.indent) out
+                   callee)
+        (view-call t view inspector indent out wrap))))
 
 (fn newline-if-ends-in-comment [out indent]
   (when (: (. out (length out)) :match "^ *;[^\n]*$")
@@ -292,20 +295,22 @@ number of handled arguments."
             callee (or (. renames callee) callee)
             out ["(" callee]
             body? (classify.body? classifier callee)
-            indent (if body?
-                       (+ start-indent 2)
-                       (callee:find "\n")
-                       (+ (last-line-length callee) 1)
-                       (+ start-indent (length callee) 2))]
+            align-indent (+ start-indent (length callee) 2)
+            block-indent (+ start-indent classifier.indent)
+            indent (if body? block-indent
+                       (callee:find "\n") (+ (last-line-length callee) 1)
+                       align-indent)
+            wrap (if classifier.align-calls? indent block-indent)]
         ;; indent differently if it's calling a special form with body args
         (if body?
             (view-body t view inspector indent out callee)
             ;; in some cases we treat it differently depending on whether the
             ;; original code was multi-line or not
             (classify.maybe-body? classifier callee)
-            (view-maybe-body t view inspector indent start-indent out callee)
-            (view-call t view inspector indent out))
-        (newline-if-ends-in-comment out indent)
+            (view-maybe-body t view inspector indent start-indent out callee
+                             wrap)
+            (view-call t view inspector indent out wrap))
+        (newline-if-ends-in-comment out (if body? indent wrap))
         (table.insert out ")")
         (table.concat out))))
 
@@ -459,7 +464,10 @@ When f returns a truthy value, recursively walks the children."
             (set skip-next? false)))
       (set prev-ast ast))
     (table.insert out "")
-    (let [formatted (table.concat out "\n")]
+    (let [formatted (table.concat out "\n")
+          formatted (if (= false settings.trailing-newline?)
+                        (formatted:gsub "\n$" "")
+                        formatted)]
       (values formatted (not= formatted original)))))
 
 {: fnlfmt : format-file :version :0.4.0}

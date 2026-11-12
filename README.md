@@ -43,6 +43,9 @@ evaluated:
 {:version 1
  :style :default
  :line-length 80
+ :indent 2
+ :align-calls? true
+ :trailing-newline? true
  :no-comments false
  :extra-forms {}
  :form-patterns []
@@ -68,14 +71,27 @@ Available settings:
 | Key                   | Type    | Default    | Meaning                                  |
 |-----------------------|---------|------------|------------------------------------------|
 | `:version`            | number  | `1`        | Config format version; must be `1`.      |
-| `:style`              | string  | `:default` | Preset name. Only `:default` for now.    |
+| `:style`              | string  | `:default` | Preset: `:default`, `:wide`, or `:block`. |
 | `:line-length`        | number  | `80`       | Column after which calls are wrapped.    |
+| `:indent`             | number  | `2`        | Body indentation width.                  |
+| `:align-calls?`       | boolean | `true`     | Align wrapped call arguments under the first argument. |
+| `:trailing-newline?`  | boolean | `true`     | End formatted output with a newline.     |
 | `:no-comments`        | boolean | `false`    | Strip comments, like `--no-comments`.    |
 | `:forms`              | table   | built-in   | Replace the built-in classification table. |
 | `:extra-forms`        | table   | `{}`       | Add or override classifications.         |
 | `:form-patterns`      | list    | `[]`       | Ordered `[pattern style]` pairs.         |
 | `:unknown-form-style` | string  | `:call`    | Style for forms that match nothing else. |
 | `:infer-macros?`      | boolean | `true`     | Infer macros from naming conventions.    |
+
+Presets bundle options that are commonly changed together:
+
+| Preset   | Sets                                    |
+|----------|-----------------------------------------|
+| `:default` | No changes; upstream-compatible behavior. |
+| `:wide`  | `:line-length 100`.                     |
+| `:block` | `:align-calls? false`.                  |
+
+Explicit keys in the config file or on the command line override the preset.
 
 Each entry in `:forms` and `:extra-forms` maps a form name to a style:
 

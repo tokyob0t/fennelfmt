@@ -97,12 +97,27 @@ The available keys are:
 Config format version; must be 1.
 .TP
 .B :style
-Preset name. Only
-.B :default
-is currently available.
+Preset name:
+.BR :default ,
+.BR :wide
+(line length 100), or
+.BR :block
+(block-indented call arguments).
 .TP
 .B :line-length
 Column after which calls are wrapped (default 80).
+.TP
+.B :indent
+Body indentation width (default 2).
+.TP
+.B :align-calls?
+Align wrapped call arguments under the first argument (default true).
+When false, continuation lines use the
+.B :indent
+width instead.
+.TP
+.B :trailing-newline?
+End formatted output with a newline (default true).
 .TP
 .B :no-comments
 Boolean equivalent of

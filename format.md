@@ -111,11 +111,14 @@ be one line if the original code had them as one-liners.
 
 The line length defaults to 80 columns and can be changed with a
 `.fnlfmt.fnl` file; see the [README](README.md#configuration) for
-discovery rules and the full list of settings. Configuration also lets
-third-party macros opt into the styles described above through
-`:extra-forms`, `:form-patterns`, and `:unknown-form-style`. The
-default classification and all other behavior match upstream `fnlfmt`
-exactly; a config file can only change what it names or overrides.
+discovery rules and the full list of settings. Body indentation defaults
+to 2 columns, wrapped call arguments align under the first argument, and
+output ends with a newline; `:indent`, `:align-calls?`, and
+`:trailing-newline?` change those. Configuration also lets third-party
+macros opt into the styles described above through `:extra-forms`,
+`:form-patterns`, and `:unknown-form-style`. The default classification
+and all other behavior match upstream `fnlfmt` exactly; a config file can
+only change what it names or overrides.
 
 The repository's own [`.fnlfmt.fnl`](.fnlfmt.fnl) lists every key and the
 full default classification table as a reference.

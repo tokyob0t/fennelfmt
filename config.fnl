@@ -19,19 +19,27 @@
 (local defaults {:version 1
                  :style :default
                  :line-length 80
+                 :indent 2
+                 :align-calls? true
+                 :trailing-newline? true
                  :no-comments false
                  :extra-forms {}
                  :form-patterns []
                  :unknown-form-style :call
                  :infer-macros? true})
 
-;; Presets bundle defaults for the options that are currently implemented.
-;; New presets are added here as the rest of the option catalog lands.
-(local presets {:default {}})
+;; Presets bundle options that are commonly changed together. Explicit keys in
+;; a config file or on the command line override the preset.
+(local presets {:default {}
+                :wide {:line-length 100}
+                :block {:align-calls? false}})
 
 (local valid-keys {:version :number
                    :style :string
                    :line-length :number
+                   :indent :number
+                   :align-calls? :boolean
+                   :trailing-newline? :boolean
                    :no-comments :boolean
                    :forms :table
                    :extra-forms :table
@@ -169,6 +177,9 @@
             (= key :line-length)
             (when (or (not= value (math.floor value)) (< value 20))
               (error (.. loc ": :line-length must be an integer >= 20") 0))
+            (= key :indent)
+            (when (or (not= value (math.floor value)) (< value 1))
+              (error (.. loc ": :indent must be an integer >= 1") 0))
             (or (= key :forms) (= key :extra-forms))
             (validate-forms value loc key)
             (= key :form-patterns)
@@ -222,6 +233,9 @@ file, command line."
         order [:version
                :style
                :line-length
+               :indent
+               :align-calls?
+               :trailing-newline?
                :no-comments
                :forms
                :extra-forms

@@ -293,6 +293,65 @@
                   "must be a boolean")
     (os.execute (.. "rm -rf '" root "'"))))
 
+(fn option-tests []
+  (let [root (tmpdir)
+        file (fn [name contents] (write-into root name contents))
+        configure (fn [contents] (write-into root ".fnlfmt.fnl" contents))
+        format (fn [filename] (run (.. "./fnlfmt '" filename "'")))
+        long-call (.. "(some-function aaaaaaaaaaaaaaaaaaaaaaaa "
+                      "bbbbbbbbbbbbbbbbbbbbbbbb " "cccccccccccccccccccccccc)\n")
+        aligned (.. "(some-function aaaaaaaaaaaaaaaaaaaaaaaa "
+                    "bbbbbbbbbbbbbbbbbbbbbbbb\n"
+                    "               cccccccccccccccccccccccc)\n")
+        block (.. "(some-function aaaaaaaaaaaaaaaaaaaaaaaa "
+                  "bbbbbbbbbbbbbbbbbbbbbbbb\n" "  cccccccccccccccccccccccc)\n")]
+    ;; Body indentation width.
+    (let [f (file "indent.fnl" "(when true\n  (print 1))\n")]
+      (configure "{:indent 4}\n")
+      (let [(out code) (format f)]
+        (check :options/indent
+               (and (= 0 code) (= out "(when true\n    (print 1))\n")))))
+    (let [(result _) (indent.indent "(when true\n(print 1))\n" {:indent 4})]
+      (check :options/indent-library (= result "(when true\n    (print 1))\n")))
+    ;; Call wrapping: aligned (default) vs block-indented.
+    (let [f (file "long.fnl" long-call)]
+      (let [(out code) (run (.. "./fnlfmt --no-config '" f "'"))]
+        (check :options/align-default (and (= 0 code) (= out aligned))))
+      (configure "{:align-calls? false}\n")
+      (let [(out code) (format f)]
+        (check :options/align-block (and (= 0 code) (= out block))))
+      (configure "{:style :block}\n")
+      (let [(out code) (format f)]
+        (check :options/preset-block (and (= 0 code) (= out block))))
+      (configure "{:style :wide}\n")
+      (let [(out code) (format f)]
+        (check :options/preset-wide (and (= 0 code) (= out long-call)))))
+    ;; Trailing newline control.
+    (let [f (file "newline.fnl" "(print 1)\n")]
+      (configure "{:trailing-newline? false}\n")
+      (let [(out code) (format f)]
+        (check :options/no-trailing-newline
+               (and (= 0 code) (= out "(print 1)")))))
+    (let [(result _) (indent.indent "(print 1)\n" {:trailing-newline? false})]
+      (check :options/indent-no-trailing-newline (= result "(print 1)")))
+    ;; The new options appear in --print-config.
+    (configure "{:indent 4 :align-calls? false}\n")
+    (let [(out code) (run (.. "./fnlfmt --print-config '" (.. root "/long.fnl")
+                              "'"))]
+      (check :options/print-config
+             (and (= 0 code) (not= nil (out:find ":indent" 1 true))
+                  (not= nil (out:find ":align-calls?" 1 true)))))
+    ;; Validation.
+    (let [path (write-into root ".fnlfmt.fnl" "{:indent 0}\n")
+          (out code) (run (.. "./fnlfmt --config '" path "' --print-config"))]
+      (check :options/bad-indent
+             (and (= 1 code) (not= nil (out:find "integer >= 1" 1 true)))))
+    (let [path (write-into root ".fnlfmt.fnl" "{:align-calls? 1}\n")
+          (out code) (run (.. "./fnlfmt --config '" path "' --print-config"))]
+      (check :options/bad-align
+             (and (= 1 code) (not= nil (out:find "must be a boolean" 1 true)))))
+    (os.execute (.. "rm -rf '" root "'"))))
+
 (each [_ name (ipairs (if (< 0 (length arg))
                           arg
                           cases))]
@@ -310,7 +369,8 @@
 (when (= 0 (length arg))
   (cli-tests)
   (config-tests)
-  (classification-tests))
+  (classification-tests)
+  (option-tests))
 
 (print (: "%s passed, %s failed" :format pass (length failures)))
 (when (not= 0 (length failures))

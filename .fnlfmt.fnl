@@ -7,6 +7,9 @@
 {:version 1
  :style :default
  :line-length 80
+ :indent 2
+ :align-calls? true
+ :trailing-newline? true
  :no-comments false
  :forms {:-> :threading
          :->> :threading
