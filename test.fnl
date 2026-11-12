@@ -313,6 +313,41 @@
                (and (= 0 code) (= out "(when true\n    (print 1))\n")))))
     (let [(result _) (indent.indent "(when true\n(print 1))\n" {:indent 4})]
       (check :options/indent-library (= result "(when true\n    (print 1))\n")))
+    ;; :indent controls body lines only; binding alignment depends on the
+    ;; opening delimiter's column, so it must not move with :indent.
+    (let [f (file "binding.fnl"
+                  (.. "(local example {:field (let [my-value1 1\n"
+                      (string.rep " " 28) "my-value2 2]\n" (string.rep " " 24)
+                      "[my-value1 my-value2])})\n"))
+          indent1 (.. "(local example {:field (let [my-value1 1\n"
+                      (string.rep " " 29) "my-value2 2]\n" (string.rep " " 24)
+                      "[my-value1 my-value2])})\n")
+          indent4 (.. "(local example {:field (let [my-value1 1\n"
+                      (string.rep " " 29) "my-value2 2]\n" (string.rep " " 27)
+                      "[my-value1 my-value2])})\n")]
+      (configure "{:indent 1}\n")
+      (let [(out code) (format f)]
+        (check :options/binding-indent1 (and (= 0 code) (= out indent1))))
+      (configure "{:indent 4}\n")
+      (let [(out code) (format f)]
+        (check :options/binding-indent4 (and (= 0 code) (= out indent4)))))
+    ;; One-per-line forms align under the first argument, independent of
+    ;; :indent.
+    (let [f (file "if.fnl" "(if condition\n  (do-a)\n  (do-b))\n")]
+      (configure "{:indent 4}\n")
+      (let [(out code) (format f)]
+        (check :options/one-per-line-indent
+               (and (= 0 code)
+                    (= out "(if condition\n    (do-a)\n    (do-b))\n")))))
+    ;; The same holds inside hashfn sugar.
+    (let [f (file "hashfn.fnl"
+                  (.. "(local x #(let [a 1\n" (string.rep " " 16) "b 2]\n"
+                      (string.rep " " 12) "(+ a b)))\n"))
+          expected (.. "(local x #(let [a 1\n" (string.rep " " 16) "b 2]\n"
+                       (string.rep " " 11) "(+ a b)))\n")]
+      (configure "{:indent 1}\n")
+      (let [(out code) (format f)]
+        (check :options/binding-hashfn (and (= 0 code) (= out expected)))))
     ;; Call wrapping: aligned (default) vs block-indented.
     (let [f (file "long.fnl" long-call)]
       (let [(out code) (run (.. "./fnlfmt --no-config '" f "'"))]
