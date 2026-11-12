@@ -5,7 +5,9 @@
 * Keep trailing comments on the same line as the form, key, or value they
   follow instead of moving them to their own line. When several entries in
   a table have trailing comments, align them in one column. Comments that
-  were already on their own line keep their own line.
+  were already on their own line keep their own line. Alignment uses the
+  actual rendered column, so an own-line comment does not add excessive
+  padding.
 
 ## 0.5.0 / 2026-11-12
 
