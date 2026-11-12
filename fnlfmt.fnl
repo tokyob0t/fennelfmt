@@ -115,6 +115,11 @@ We want everything to be on one line as much as possible, (except for let)."
 
 (local fn-forms {:fn true :lambda true "λ" true :macro true})
 
+(fn fn-form? [callee]
+  "Forms which take a name and an argument list, including macros that follow
+the same naming convention (fn/a, λ/foo)."
+  (or (. fn-forms callee) (callee:find "^fn/") (callee:find "^λ/")))
+
 (local force-initial-newline {:do true :eval-compiler true})
 
 (local slength (or (-?> (rawget _G :utf8) (. :len))
@@ -146,7 +151,7 @@ number of handled arguments."
         indent2 (+ indent (length (second:match "[^\n]*$")))]
     (when (not= nil (. t 2))
       (table.insert out second))
-    (if (. fn-forms callee)
+    (if (fn-form? callee)
         (view-fn-args t view inspector indent2 start-indent out)
         3)))
 
@@ -168,13 +173,14 @@ number of handled arguments."
                                    :-?>> true
                                    :if true})
 
+(fn fn-definition-pattern? [str]
+  (or (str:match "^ *%(fn [^%[]") (str:match "^ *%(fn/")
+      (str:match "^ *%(λ [^%[]") (str:match "^ *%(λ/")))
+
 (fn space-out-fns? [prev viewed start-index i]
-  (let [fn-pattern "^ *%(fn [^%[]"
-        lambda-pattern "^ *%(λ [^%[]"]
-    ;; functions inside a body form shouldn't be spaced if they're the first thing
-    (and (not (= start-index i))
-         (or (prev:match fn-pattern) (prev:match lambda-pattern)
-             (viewed:match fn-pattern) (viewed:match lambda-pattern)))))
+  ;; functions inside a body form shouldn't be spaced if they're the first thing
+  (and (not (= start-index i))
+       (or (fn-definition-pattern? prev) (fn-definition-pattern? viewed))))
 
 (fn originally-same-lines? [t n1 n2]
   (let [first (. t n1)
@@ -284,7 +290,8 @@ number of handled arguments."
 
 (fn body-form? [callee]
   (or (?. syntax callee :body-form?) (callee:find "%.with-")
-      (callee:find :^with-) (callee:find "%.def") (callee:find :^def)))
+      (callee:find :^with-) (callee:find "%.def") (callee:find :^def)
+      (callee:find "^fn/") (callee:find "^λ/")))
 
 (fn view-list [t view inspector start-indent]
   (if (. sugars (tostring (. t 1)))

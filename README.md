@@ -74,8 +74,8 @@ be fixed without major changes:
 
 * Page breaks and other whitespace will not be preserved.
 * Macros that take a body argument but aren't built-in will only be indented
-  as such if their name starts with `with-` or `def`. Functions which
-  use this naming convention will be indented like `let`.
+  as such if their name starts with `with-`, `def`, `fn/`, or `λ/`. Functions
+  which use this naming convention will be indented like `let`.
 
 ## Other functionality
 

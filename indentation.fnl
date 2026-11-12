@@ -89,7 +89,8 @@ should continue looking to previous lines."
 
 (fn body-form? [callee]
   (or (?. syntax callee :body-form?) (callee:find "%.with-")
-      (callee:find :^with-) (callee:find "%.def") (callee:find :^def)))
+      (callee:find :^with-) (callee:find "%.def") (callee:find :^def)
+      (callee:find "^fn/") (callee:find "^λ/")))
 
 (fn identify-indent-type [lines last stack]
   "Distinguish between forms that are part of a table vs a function call.
