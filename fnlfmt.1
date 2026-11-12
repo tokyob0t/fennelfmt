@@ -7,7 +7,14 @@ fnlfmt \- a code formatter for Fennel
 .B fnlfmt
 [\fB--check\fR] |
 [\fB--fix\fR] |
-[\fB--no-comments\fR] FILENAME...
+[\fB--no\-comments\fR] FILENAME...
+.br
+.B fnlfmt
+\fB--indent\fR FILENAME
+.br
+.B fnlfmt
+[\fB--check\-indent\fR] |
+[\fB--fix\-indent\fR] FILENAME...
 
 .SH DESCRIPTION
 This manual page documents briefly the
@@ -28,6 +35,25 @@ Format the given file and write the result back to the original file.
 .TP
 .B \-\-check
 Fail (exit code 1) if the given file is not currently formatted.
+.TP
+.B \-\-indent
+Print the file with only its indentation fixed. This uses heuristics and
+does not require the file to parse, which is useful for incomplete code in
+editors.
+.TP
+.B \-\-fix\-indent
+Fix only the indentation of the given files, writing the result back to the
+original files.
+.TP
+.B \-\-check\-indent
+Fail (exit code 1) if the given files are not indented the way the heuristic
+indenter would indent them.
+.TP
+.B \-\-version
+Print the version and exit.
+.TP
+.B \-\-help, \-h, \-?
+Print a usage summary and exit.
 .TP
 .B \-\-no\-comments
 Strip comments from the file.

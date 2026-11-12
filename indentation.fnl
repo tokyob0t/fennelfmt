@@ -28,9 +28,11 @@
 (fn line-pos [line pos]
   (let [line (line:sub 1 pos)]
     (case _G.utf8
-      {: len} (len line)
+      {: len}
+      (len line)
       ;; at least handle the most common case under old lua
-      _ (length (line:gsub "λ" "l")))))
+      _
+      (length (line:gsub "λ" "l")))))
 
 (fn count-backslashes [line pos count]
   (if (= (line:sub pos pos) "\\")
@@ -122,10 +124,12 @@ looked up in the table of lines. Returns the column number to indent to."
 
 (fn indent [code]
   "Reformat an entire block of code."
-  (let [lines []]
-    (each [line (code:gmatch "([^\n]*)\n")]
+  (let [lines []
+        ;; Appending a newline makes the final line match even when the input
+        ;; doesn't end with one, instead of silently dropping it.
+        padded (.. code "\n")]
+    (each [line (padded:gmatch "([^\n]*)\n")]
       (table.insert lines (indent-line line lines (length lines))))
-    (table.insert lines "")
     (let [result (table.concat lines "\n")]
       (values result (not= result code)))))
 
