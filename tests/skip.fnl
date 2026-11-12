@@ -1,7 +1,7 @@
 (fn [abc def]
   nil)
 
-;; fnlfmt: skip
+;; fennelfmt: skip
 (let [] ; comment here
 
 

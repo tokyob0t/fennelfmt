@@ -38,7 +38,7 @@
 (local block-forms {:do true :eval-compiler true})
 
 ;; Naming conventions inferred for third-party macros. They mirror the
-;; heuristics fnlfmt has always used; `:infer-macros? false` turns them off.
+;; heuristics fennelfmt has always used; `:infer-macros? false` turns them off.
 (local default-patterns [["^fn/" :function]
                          ["^λ/" :function]
                          ["%.with-" :body]

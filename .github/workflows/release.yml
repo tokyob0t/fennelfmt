@@ -23,15 +23,15 @@ jobs:
         run: make check
       - name: Build binary
         run: |
-          make fnlfmt
-          cp fnlfmt "fnlfmt-${GITHUB_REF_NAME}"
+          make fennelfmt
+          cp fennelfmt "fennelfmt-${GITHUB_REF_NAME}"
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --verify-tag \
-            --title "fnlfmt ${GITHUB_REF_NAME}" \
+            --title "fennelfmt ${GITHUB_REF_NAME}" \
             --generate-notes \
-            "fnlfmt-${GITHUB_REF_NAME}" \
-            fnlfmt.1
+            "fennelfmt-${GITHUB_REF_NAME}" \
+            fennelfmt.1

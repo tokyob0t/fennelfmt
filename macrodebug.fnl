@@ -1,20 +1,20 @@
-;; Macro module containing version of macrodebug that displays via fnlfmt.
+;; Macro module containing version of macrodebug that displays via fennelfmt.
 ;; Also contains macros for patching macrodebug in the root compiler scoop
 ;; and restoring the original.
 
 ;; macros
 
 (fn pretty-macrodebug [expr return-string?]
-  "Patched version of Fennel's macrodebug that calls fnlfmt on the expanded form."
+  "Patched version of Fennel's macrodebug that calls fennelfmt on the expanded form."
   (let [warn (fn [msg ...]
                (io.stderr:write (.. "Warning: " msg "\n"))
                ...)
-        fmt (match (pcall require :fnlfmt)
-              (fmt-ok {: fnlfmt}) fnlfmt
+        fmt (match (pcall require :fennelfmt)
+              (fmt-ok {: fennelfmt}) fennelfmt
               (->> (match (pcall require :fennel)
                      (ok {: view}) view
                      tostring)
-                   (warn "Failed to load fnlfmt; try checking package.path")))
+                   (warn "Failed to load fennelfmt; try checking package.path")))
         out (fmt (macroexpand expr _SCOPE))]
     (if return-string?
         out
@@ -31,7 +31,7 @@
          (values core-macros.-macrodebug nil))))
 
 (fn inject []
-  "Globally patches Fennel's macrodebug with fnlfmt's drop-in replacement.
+  "Globally patches Fennel's macrodebug with fennelfmt's drop-in replacement.
 The original macrodebug is accessible as -macrodebug, and can be restored
 with restore-default-macrodebug"
   (var root-scope _SCOPE)

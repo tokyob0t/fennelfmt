@@ -6,7 +6,7 @@
 
 - [ ] `make check` passes (tests, self-host check, and lint)
 - [ ] `changelog.md` updated for user-visible changes
-- [ ] Docs updated (`README.md`, `format.md`, `fnlfmt.1`) when flags or
+- [ ] Docs updated (`README.md`, `format.md`, `fennelfmt.1`) when flags or
       options change
 - [ ] Default behavior stays byte-for-byte compatible with upstream, or the
       intentional change is explained in the summary above

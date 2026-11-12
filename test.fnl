@@ -1,4 +1,4 @@
-(local fmt (require :fnlfmt))
+(local fmt (require :fennelfmt))
 (local config (require :config))
 (local diff (require :diff))
 (local indent (require :indentation))
@@ -82,32 +82,35 @@
         unindented (tmpfile "(foo\n1)\n(bar\n  baz)")
         empty (tmpfile "")
         indent-out (tmpfile "(foo bar)\n")]
-    (let [(out code) (run (.. "./fnlfmt --no-config --check " clean))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --check " clean))]
       (check :cli/check-clean (= 0 code)))
-    (let [(out code) (run (.. "./fnlfmt --no-config --check " dirty))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --check " dirty))]
       (check :cli/check-dirty
              (and (= 1 code) (not= nil (out:find "Not formatted" 1 true)))))
-    (let [(out code) (run (.. "./fnlfmt --no-config --check-indent " unindented))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --check-indent "
+                              unindented))]
       (check :cli/check-indent-dirty (= 1 code)))
-    (let [(out code) (run (.. "./fnlfmt --no-config --indent " indent-out))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --indent " indent-out))]
       (check :cli/indent-exact (and (= 0 code) (= out "(foo bar)\n"))))
-    (let [(out code) (run (.. "./fnlfmt --no-config --indent " unindented))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --indent " unindented))]
       (check :cli/indent-final-line
              (and (= 0 code) (not= nil (out:find "baz)" 1 true)))))
-    (let [(out code) (run (.. "./fnlfmt --no-config --fix-indent " unindented))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --fix-indent "
+                              unindented))]
       (check :cli/fix-indent-final-line
              (and (= 0 code)
                   (not= nil (: (read unindented) :find "baz)" 1 true)))))
-    (let [(out code) (run (.. "./fnlfmt --no-config --check " empty))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --check " empty))]
       (check :cli/check-empty (= 0 code)))
-    (run (.. "./fnlfmt --no-config --fix " empty))
+    (run (.. "./fennelfmt --no-config --fix " empty))
     (check :cli/fix-empty (= "" (read empty))))
-  (let [(out code) (run "./fnlfmt --help")]
+  (let [(out code) (run "./fennelfmt --help")]
     (check :cli/help (and (= 0 code) (not= nil (out:find "--indent" 1 true)))))
-  (let [(out code) (run "./fnlfmt --version")]
+  (let [(out code) (run "./fennelfmt --version")]
     (check :cli/version (and (= 0 code)
                              (not= nil
-                                   (out:find (.. "fnlfmt version " fmt.version)
+                                   (out:find (.. "fennelfmt version "
+                                                 fmt.version)
                                              1 true))))))
 
 (fn config-tests []
@@ -115,108 +118,126 @@
         sub (.. root "/sub")
         long "(print (some-function with-three arguments here to test wrapping behavior ok fine))\n"]
     (os.execute (.. "mkdir -p '" sub "'"))
-    (write-into root ".fnlfmt.fnl" "{:line-length 100}\n")
-    (write-into sub ".fnlfmt.fnl" "{:line-length 60}\n")
+    (write-into root ".fennelfmt.fnl" "{:line-length 100}\n")
+    (write-into sub ".fennelfmt.fnl" "{:line-length 60}\n")
     (write-into sub "x.fnl" "(foo bar)\n")
     (write-into root "long.fnl" long)
     ;; Nearest config wins; discovery walks up to the parent.
     (let [(settings _ path) (config.resolve (.. sub "/x.fnl") {})]
       (check :config/nearest-wins (= 60 settings.line-length))
-      (check :config/nearest-path (= path (.. sub "/.fnlfmt.fnl"))))
+      (check :config/nearest-path (= path (.. sub "/.fennelfmt.fnl"))))
     (let [(settings _ path) (config.resolve (.. root "/y.fnl") {})]
       (check :config/parent-found
              (and (= 100 settings.line-length)
-                  (= path (.. root "/.fnlfmt.fnl")))))
+                  (= path (.. root "/.fennelfmt.fnl")))))
     (let [(settings _ path) (config.resolve (.. sub "/x.fnl") {:no-config true})]
       (check :config/no-config (and (= 80 settings.line-length) (= nil path))))
     (let [(settings _ path) (config.resolve (.. sub "/x.fnl")
-                                            {:config (.. root "/.fnlfmt.fnl")})]
+                                            {:config (.. root "/.fennelfmt.fnl")})]
       (check :config/explicit (= 100 settings.line-length)))
     ;; Command line options override the config file.
     (let [(settings _) (config.resolve (.. sub "/x.fnl")
-                                       {:config (.. root "/.fnlfmt.fnl")
+                                       {:config (.. root "/.fennelfmt.fnl")
                                         :no-comments true})]
       (check :config/cli-precedence
              (and (= 100 settings.line-length) (= true settings.no-comments))))
     ;; --print-config shows the effective values and their provenance.
-    (let [(out code) (run (.. "./fnlfmt --print-config '" (.. sub "/x.fnl") "'"))]
+    (let [(out code) (run (.. "./fennelfmt --print-config '" (.. sub "/x.fnl")
+                              "'"))]
       (check :cli/print-config
              (and (= 0 code)
-                  (not= nil (out:find (.. "config file: " sub "/.fnlfmt.fnl") 1
-                                      true))
+                  (not= nil (out:find (.. "config file: " sub "/.fennelfmt.fnl")
+                                      1 true))
                   (not= nil (out:find ":line%-length%s+60")))))
-    ;; FNLFMT_CONFIG takes precedence over discovered configs.
-    (let [(out code) (run (.. "FNLFMT_CONFIG='" (.. root "/.fnlfmt.fnl")
-                              "' ./fnlfmt --print-config '" (.. sub "/x.fnl")
+    ;; FENNELFMT_CONFIG takes precedence over discovered configs.
+    (let [(out code) (run (.. "FENNELFMT_CONFIG='" (.. root "/.fennelfmt.fnl")
+                              "' ./fennelfmt --print-config '" (.. sub "/x.fnl")
                               "'"))]
       (check :cli/env-config
              (and (= 0 code) (not= nil (out:find ":line%-length%s+100")))))
-    (let [(out code) (run (.. "FNLFMT_CONFIG='" (.. root "/.fnlfmt.fnl")
-                              "' ./fnlfmt --no-config --print-config '"
+    (let [(out code) (run (.. "FENNELFMT_CONFIG='" (.. root "/.fennelfmt.fnl")
+                              "' ./fennelfmt --no-config --print-config '"
                               (.. sub "/x.fnl") "'"))]
       (check :cli/env-config-overridden
              (and (= 0 code) (not= nil (out:find ":line%-length%s+80")))))
-    ;; --config overrides FNLFMT_CONFIG.
-    (let [(out code) (run (.. "FNLFMT_CONFIG='" (.. root "/.fnlfmt.fnl")
-                              "' ./fnlfmt --config '" (.. sub "/.fnlfmt.fnl")
-                              "' --print-config '" (.. sub "/x.fnl") "'"))]
+    ;; --config overrides FENNELFMT_CONFIG.
+    (let [(out code) (run (.. "FENNELFMT_CONFIG='" (.. root "/.fennelfmt.fnl")
+                              "' ./fennelfmt --config '"
+                              (.. sub "/.fennelfmt.fnl") "' --print-config '"
+                              (.. sub "/x.fnl") "'"))]
       (check :cli/config-overrides-env
              (and (= 0 code) (not= nil (out:find ":line%-length%s+60")))))
     ;; :line-length changes how calls are wrapped.
-    (let [(out code) (run (.. "./fnlfmt --no-config '" (.. root "/long.fnl")
+    (let [(out code) (run (.. "./fennelfmt --no-config '" (.. root "/long.fnl")
                               "'"))]
       (check :cli/line-length-default
              (and (= 0 code) (not= nil (out:find "ok\n" 1 true)))))
-    (let [(out code) (run (.. "./fnlfmt --config '" (.. root "/.fnlfmt.fnl")
-                              "' '" (.. root "/long.fnl") "'"))]
+    (let [(out code) (run (.. "./fennelfmt --config '"
+                              (.. root "/.fennelfmt.fnl") "' '"
+                              (.. root "/long.fnl") "'"))]
       (check :cli/line-length-config (and (= 0 code) (= out long))))
     ;; :no-comments can be set from the config file.
-    (write-into root ".fnlfmt.fnl" "{:no-comments true}\n")
+    (write-into root ".fennelfmt.fnl" "{:no-comments true}\n")
     (write-into root "comments.fnl" "; hi\n(print 1)\n")
-    (let [(out code) (run (.. "./fnlfmt '" (.. root "/comments.fnl") "'"))]
+    (let [(out code) (run (.. "./fennelfmt '" (.. root "/comments.fnl") "'"))]
       (check :cli/config-no-comments (and (= 0 code) (= out "(print 1)\n")))
       ;; Validation fails with a location and a helpful message.
-      (let [bad (write-into root ".fnlfmt.fnl" "{:version 2}\n")
-            (out code) (run (.. "./fnlfmt --config '" bad "' --print-config"))]
+      (let [bad (write-into root ".fennelfmt.fnl" "{:version 2}\n")
+            (out code) (run (.. "./fennelfmt --config '" bad "' --print-config"))]
         (check :config/bad-version
                (and (= 1 code)
                     (not= nil (out:find "unsupported configuration version 2" 1
                                         true)))))
-      (let [bad (write-into root ".fnlfmt.fnl" "{:oops 1}\n")
-            (out code) (run (.. "./fnlfmt --config '" bad "' --print-config"))]
+      (let [bad (write-into root ".fennelfmt.fnl" "{:oops 1}\n")
+            (out code) (run (.. "./fennelfmt --config '" bad "' --print-config"))]
         (check :config/unknown-key
                (and (= 1 code)
                     (not= nil (out:find "unknown configuration key :oops" 1
                                         true)))))
-      (let [bad (write-into root ".fnlfmt.fnl" "{:line-length :big}\n")
-            (out code) (run (.. "./fnlfmt --config '" bad "' --print-config"))]
+      (let [bad (write-into root ".fennelfmt.fnl" "{:line-length :big}\n")
+            (out code) (run (.. "./fennelfmt --config '" bad "' --print-config"))]
         (check :config/wrong-type
                (and (= 1 code)
                     (not= nil (out:find ":line-length must be a number" 1 true)))))
-      (let [bad (write-into root ".fnlfmt.fnl" "{:line-length 100\n :oops")
-            (out code) (run (.. "./fnlfmt --config '" bad "' --print-config"))]
+      (let [bad (write-into root ".fennelfmt.fnl" "{:line-length 100\n :oops")
+            (out code) (run (.. "./fennelfmt --config '" bad "' --print-config"))]
         (check :config/parse-error
                (and (= 1 code) (not= nil (out:find "Parse error" 1 true)))))
-      (let [(out code) (run (.. "./fnlfmt --config '" (.. root "/missing.fnl")
-                                "' --print-config"))]
+      (let [(out code) (run (.. "./fennelfmt --config '"
+                                (.. root "/missing.fnl") "' --print-config"))]
         (check :config/missing-file
                (and (= 1 code)
                     (not= nil (out:find "configuration file not found" 1 true)))))
       ;; --config and --no-config are mutually exclusive.
-      (let [(out code) (run "./fnlfmt --config x --no-config --print-config")]
+      (let [(out code) (run "./fennelfmt --config x --no-config --print-config")]
         (check :config/mutually-exclusive
                (and (= 1 code)
                     (not= nil (out:find "mutually exclusive" 1 true)))))
+      ;; There is no user-level config file.
+      (let [base (tmpdir)
+            work (.. base "/work")
+            xdg (.. base "/xdg")
+            user-config (.. xdg "/fennelfmt/config.fnl")]
+        (os.execute (.. "mkdir -p '" work "' '" xdg "/fennelfmt'"))
+        (write-file user-config "{:line-length 100}\n")
+        (write-into work "x.fnl" "(foo)\n")
+        (let [(out code) (run (.. "XDG_CONFIG_HOME='" xdg
+                                  "' ./fennelfmt --print-config '"
+                                  (.. work "/x.fnl") "'"))]
+          (check :config/no-user-config
+                 (and (= 0 code) (not= nil (out:find ":line%-length%s+80"))
+                      (not= nil (out:find "config file: none" 1 true)))))
+        (os.execute (.. "rm -rf '" base "'")))
       (os.execute (.. "rm -rf '" root "'")))))
 
 (fn classification-tests []
   (let [root (tmpdir)
         file (fn [name contents] (write-into root name contents))
-        configure (fn [contents] (write-into root ".fnlfmt.fnl" contents))
-        format (fn [filename] (run (.. "./fnlfmt '" filename "'")))
+        configure (fn [contents] (write-into root ".fennelfmt.fnl" contents))
+        format (fn [filename] (run (.. "./fennelfmt '" filename "'")))
         expect-error (fn [name contents needle]
-                       (let [path (write-into root ".fnlfmt.fnl" contents)
-                             (out code) (run (.. "./fnlfmt --config '" path
+                       (let [path (write-into root ".fennelfmt.fnl" contents)
+                             (out code) (run (.. "./fennelfmt --config '" path
                                                  "' --print-config"))]
                          (check name
                                 (and (= 1 code)
@@ -224,7 +245,7 @@
     ;; Extra classifications add to the built-in table.
     (let [f (file "twiddle.fnl"
                   "(twiddle alpha\n         beta\n         gamma)\n")]
-      (let [(out code) (run (.. "./fnlfmt --no-config '" f "'"))]
+      (let [(out code) (run (.. "./fennelfmt --no-config '" f "'"))]
         (check :classify/default-call
                (and (= 0 code) (= out "(twiddle alpha beta gamma)\n"))))
       (configure "{:extra-forms {:twiddle :body}}\n")
@@ -273,12 +294,12 @@
       (check :classify/indent-body (= result "(twiddle alpha\n  beta)\n")))
     (let [f (file "indent.fnl" "(twiddle alpha\nbeta)\n")]
       (configure "{:extra-forms {:twiddle :body}}\n")
-      (let [(out code) (run (.. "./fnlfmt --indent '" f "'"))]
+      (let [(out code) (run (.. "./fennelfmt --indent '" f "'"))]
         (check :classify/cli-indent
                (and (= 0 code) (= out "(twiddle alpha\n  beta)\n")))))
     ;; --print-config exposes the new keys.
     (configure "{:extra-forms {:twiddle :body} :unknown-form-style :body}\n")
-    (let [(out code) (run (.. "./fnlfmt --print-config '"
+    (let [(out code) (run (.. "./fennelfmt --print-config '"
                               (.. root "/twiddle.fnl") "'"))]
       (check :classify/print-config
              (and (= 0 code) (not= nil (out:find ":extra-forms" 1 true))
@@ -297,8 +318,8 @@
 (fn option-tests []
   (let [root (tmpdir)
         file (fn [name contents] (write-into root name contents))
-        configure (fn [contents] (write-into root ".fnlfmt.fnl" contents))
-        format (fn [filename] (run (.. "./fnlfmt '" filename "'")))
+        configure (fn [contents] (write-into root ".fennelfmt.fnl" contents))
+        format (fn [filename] (run (.. "./fennelfmt '" filename "'")))
         long-call (.. "(some-function aaaaaaaaaaaaaaaaaaaaaaaa "
                       "bbbbbbbbbbbbbbbbbbbbbbbb " "cccccccccccccccccccccccc)\n")
         aligned (.. "(some-function aaaaaaaaaaaaaaaaaaaaaaaa "
@@ -351,7 +372,7 @@
         (check :options/binding-hashfn (and (= 0 code) (= out expected)))))
     ;; Call wrapping: aligned (default) vs block-indented.
     (let [f (file "long.fnl" long-call)]
-      (let [(out code) (run (.. "./fnlfmt --no-config '" f "'"))]
+      (let [(out code) (run (.. "./fennelfmt --no-config '" f "'"))]
         (check :options/align-default (and (= 0 code) (= out aligned))))
       (configure "{:align-calls? false}\n")
       (let [(out code) (format f)]
@@ -372,18 +393,18 @@
       (check :options/indent-no-trailing-newline (= result "(print 1)")))
     ;; The new options appear in --print-config.
     (configure "{:indent 4 :align-calls? false}\n")
-    (let [(out code) (run (.. "./fnlfmt --print-config '" (.. root "/long.fnl")
-                              "'"))]
+    (let [(out code) (run (.. "./fennelfmt --print-config '"
+                              (.. root "/long.fnl") "'"))]
       (check :options/print-config
              (and (= 0 code) (not= nil (out:find ":indent" 1 true))
                   (not= nil (out:find ":align-calls?" 1 true)))))
     ;; Validation.
-    (let [path (write-into root ".fnlfmt.fnl" "{:indent 0}\n")
-          (out code) (run (.. "./fnlfmt --config '" path "' --print-config"))]
+    (let [path (write-into root ".fennelfmt.fnl" "{:indent 0}\n")
+          (out code) (run (.. "./fennelfmt --config '" path "' --print-config"))]
       (check :options/bad-indent
              (and (= 1 code) (not= nil (out:find "integer >= 1" 1 true)))))
-    (let [path (write-into root ".fnlfmt.fnl" "{:align-calls? 1}\n")
-          (out code) (run (.. "./fnlfmt --config '" path "' --print-config"))]
+    (let [path (write-into root ".fennelfmt.fnl" "{:align-calls? 1}\n")
+          (out code) (run (.. "./fennelfmt --config '" path "' --print-config"))]
       (check :options/bad-align
              (and (= 1 code) (not= nil (out:find "must be a boolean" 1 true)))))
     (os.execute (.. "rm -rf '" root "'"))))
@@ -403,38 +424,38 @@
   (let [root (tmpdir)
         clean (write-into root "clean.fnl" "(foo bar)\n")
         dirty (write-into root "dirty.fnl" "(foo   bar)\n")]
-    (let [(out code) (run (.. "./fnlfmt --no-config --diff '" dirty "'"))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --diff '" dirty "'"))]
       (check :io/diff-dirty
              (and (= 1 code) (not= nil (out:find "--- a/" 1 true))
                   (not= nil (out:find "-(foo   bar)" 1 true))
                   (not= nil (out:find "+(foo bar)" 1 true)))))
-    (let [(out code) (run (.. "./fnlfmt --no-config --diff '" clean "'"))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --diff '" clean "'"))]
       (check :io/diff-clean (and (= 0 code) (= out ""))))
-    (let [(out code) (run (.. "./fnlfmt --no-config --quiet --check '" dirty
+    (let [(out code) (run (.. "./fennelfmt --no-config --quiet --check '" dirty
                               "'"))]
       (check :io/quiet-check (and (= 1 code) (= out ""))))
-    (let [(out code) (run (.. "./fnlfmt --no-config --check '" dirty "'"))]
+    (let [(out code) (run (.. "./fennelfmt --no-config --check '" dirty "'"))]
       (check :io/check-message
              (and (= 1 code) (not= nil (out:find "Not formatted" 1 true)))))
-    (let [(out code) (run (.. "./fnlfmt --no-config --quiet --check '" clean
+    (let [(out code) (run (.. "./fennelfmt --no-config --quiet --check '" clean
                               "'"))]
       (check :io/quiet-clean (and (= 0 code) (= out ""))))
-    (let [(out code) (run "./fnlfmt --no-config /no/such/file.fnl")]
+    (let [(out code) (run "./fennelfmt --no-config /no/such/file.fnl")]
       (check :io/missing-file
              (and (= 1 code)
                   (not= nil (out:find "No such file or directory" 1 true)))))
     (os.execute (.. "rm -rf '" root "'")))
-  (let [(out code) (run "printf '(foo   bar)\\n' | ./fnlfmt --no-config --stdin")]
+  (let [(out code) (run "printf '(foo   bar)\\n' | ./fennelfmt --no-config --stdin")]
     (check :io/stdin (and (= 0 code) (= out "(foo bar)\n"))))
-  (let [(out code) (run "printf '(foo   bar)\\n' | ./fnlfmt --no-config --stdin --diff")]
+  (let [(out code) (run "printf '(foo   bar)\\n' | ./fennelfmt --no-config --stdin --diff")]
     (check :io/stdin-diff
            (and (= 1 code) (not= nil (out:find "--- a/stdin" 1 true)))))
-  (let [(out code) (run "printf '(foo\\n1)\\n' | ./fnlfmt --no-config --stdin --indent")]
+  (let [(out code) (run "printf '(foo\\n1)\\n' | ./fennelfmt --no-config --stdin --indent")]
     (check :io/stdin-indent (and (= 0 code) (= out "(foo\n     1)\n"))))
-  (let [(out code) (run "printf '(foo)\\n' | ./fnlfmt --stdin --fix")]
+  (let [(out code) (run "printf '(foo)\\n' | ./fennelfmt --stdin --fix")]
     (check :io/stdin-fix
            (and (= 1 code) (not= nil (out:find "cannot write to stdin" 1 true)))))
-  (let [(out code) (run "./fnlfmt --stdin some.fnl")]
+  (let [(out code) (run "./fennelfmt --stdin some.fnl")]
     (check :io/stdin-filename
            (and (= 1 code)
                 (not= nil (out:find "--stdin cannot be combined" 1 true))))))
@@ -442,7 +463,8 @@
 (fn comment-tests []
   (let [root (tmpdir)
         file (fn [name contents] (write-into root name contents))
-        format (fn [filename] (run (.. "./fnlfmt --no-config '" filename "'")))]
+        format (fn [filename]
+                 (run (.. "./fennelfmt --no-config '" filename "'")))]
     ;; Several trailing comments align in one column.
     (let [f (file "align.fnl"
                   (.. "(local example {:value1 1 ;; one\n" (string.rep " " 16)

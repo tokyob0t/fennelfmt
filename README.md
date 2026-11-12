@@ -1,24 +1,24 @@
-# Fennel Format
+# fennelfmt
 
 Format your Fennel!
 
 > **This is a fork.** Upstream is
 > [`~technomancy/fnlfmt`](https://git.sr.ht/~technomancy/fnlfmt) on SourceHut.
 > This fork is maintained by [@tokyob0t](https://github.com/tokyob0t) at
-> <https://github.com/tokyob0t/fnlfmt> and adds opt-in configuration while
+> <https://github.com/tokyob0t/fennelfmt> and adds opt-in configuration while
 > keeping the upstream defaults unchanged. See [Fork notes](#fork-notes).
 
 ## Usage
 
     $ make install PREFIX=$HOME # or sudo make install in /usr/local
-    $ ./fnlfmt mycode.fnl # prints formatted code to standard out
-    $ ./fnlfmt --fix mycode.fnl # replaces the file with formatted code
-    $ ./fnlfmt --check mycode.fnl # checks if the file is formatted
-    $ ./fnlfmt --diff mycode.fnl # prints a unified diff; exits 1 if needed
-    $ ./fnlfmt --quiet --check mycode.fnl # no output, exit status only
-    $ ./fnlfmt --indent mycode.fnl # print with indentation fixed only
-    $ curl localhost:8080/my-file.fnl | ./fnlfmt - # pipe to stdin
-    $ cat my-file.fnl | ./fnlfmt --stdin # same, explicit
+    $ ./fennelfmt mycode.fnl # prints formatted code to standard out
+    $ ./fennelfmt --fix mycode.fnl # replaces the file with formatted code
+    $ ./fennelfmt --check mycode.fnl # checks if the file is formatted
+    $ ./fennelfmt --diff mycode.fnl # prints a unified diff; exits 1 if needed
+    $ ./fennelfmt --quiet --check mycode.fnl # no output, exit status only
+    $ ./fennelfmt --indent mycode.fnl # print with indentation fixed only
+    $ curl localhost:8080/my-file.fnl | ./fennelfmt - # pipe to stdin
+    $ cat my-file.fnl | ./fennelfmt --stdin # same, explicit
 
 You can skip reformatting of top-level forms by placing a comment
 before them. This does not work for nested forms.
@@ -27,7 +27,7 @@ before them. This does not work for nested forms.
 (fn this-function [can be formatted ...]
   ...)
 
-;; fnlfmt: skip
+;; fennelfmt: skip
 (local this-table ["benefits"          :from
                    "different kind of" :FORMATTING
                    "because of"        :reasons])
@@ -38,9 +38,9 @@ before them. This does not work for nested forms.
 
 ## Configuration
 
-By default `fnlfmt` behaves exactly like upstream. Optional settings live in a
-`.fnlfmt.fnl` file written as Fennel data; it is parsed and validated, never
-evaluated:
+By default `fennelfmt` behaves exactly like upstream. Optional settings live
+in a `.fennelfmt.fnl` file written as Fennel data; it is parsed and validated,
+never evaluated:
 
 ```fennel
 {:version 1
@@ -58,16 +58,19 @@ evaluated:
 
 One config file is selected, without merging:
 
-1. `--config PATH` (or `FNLFMT_CONFIG`), if given;
-2. otherwise the nearest `.fnlfmt.fnl` found by walking up from the file's
-   directory;
-3. otherwise `$XDG_CONFIG_HOME/fnlfmt/config.fnl` (or
-   `~/.config/fnlfmt/config.fnl`).
+1. `--config PATH`, if given;
+2. otherwise the path in `FENNELFMT_CONFIG`, if set;
+3. otherwise the nearest `.fennelfmt.fnl` found by walking up from the file's
+   directory.
 
-`--no-config` ignores every config file. Command line flags such as
-`--no-comments` override values from the selected file. Unknown keys,
-unsupported versions, and malformed files fail with a message that includes
-the file and line, and exit with status 1.
+There is no user-level config file. `--no-config` ignores every config file.
+Command line flags such as `--no-comments` override values from the selected
+file. Unknown keys, unsupported versions, and malformed files fail with a
+message that includes the file and line, and exit with status 1.
+
+If you are migrating from `fnlfmt`, rename `.fnlfmt.fnl` to `.fennelfmt.fnl`
+and `FNLFMT_CONFIG` to `FENNELFMT_CONFIG`. The legacy `;; fnlfmt: skip`
+comment is still accepted.
 
 Available settings:
 
@@ -124,9 +127,9 @@ Fennel's own syntax table.
  :unknown-form-style :call}
 ```
 
-Use `fnlfmt --print-config FILE` to see the effective settings and where each
-one came from. The repository's own `.fnlfmt.fnl` spells out every key and
-the full default classification table as a reference.
+Use `fennelfmt --print-config FILE` to see the effective settings and where
+each one came from. The repository's own `.fennelfmt.fnl` spells out every
+key and the full default classification table as a reference.
 
 ## Development
 
@@ -135,32 +138,33 @@ the full default classification table as a reference.
 
 The build compiles with the vendored `fennel` (set `FENNEL`/`FENNEL_OPTS` to
 override), so it does not depend on a system-wide Fennel install. Run
-`make selfhost` after changing formatting behavior to reformat fnlfmt's own
-sources. `make check` also needs `fennel-ls` on `PATH`; it falls back to the
-Mason install location used by Neovim.
+`make selfhost` after changing formatting behavior to reformat fennelfmt's
+own sources. `make check` also needs `fennel-ls` on `PATH`; it falls back to
+the Mason install location used by Neovim.
 
 Releases are cut by pushing a version tag, for example:
 
-    $ git tag 0.5.0
-    $ git push origin 0.5.0
+    $ git tag 0.6.0
+    $ git push origin 0.6.0
 
-The `Release` workflow runs `make check`, builds the self-contained `fnlfmt`
-script, and attaches it together with the man page to the GitHub release.
+The `Release` workflow runs `make check`, builds the self-contained
+`fennelfmt` script, and attaches it together with the man page to the GitHub
+release.
 
 ## Description
 
-The goal of `fnlfmt` is *not* to be The One Formatter that all Fennel
+The goal of `fennelfmt` is *not* to be The One Formatter that all Fennel
 programmers use to format their code. We assume that most of the time,
 Fennel programmers will use a text editor that already knows how to
-indent code correctly, and that `fnlfmt` supplements existing editor
+indent code correctly, and that `fennelfmt` supplements existing editor
 support in cases where for whatever reason the editor functionality
-cannot be used. This means that `fnlfmt` should be treated as one
+cannot be used. This means that `fennelfmt` should be treated as one
 implementation of the standard format rather than being canonical itself.
 
 By design the defaults are not configurable in the sense of changing how
 the formatter interprets standard Fennel: formatting choices should be
 correct other than bugs or when new features are added to Fennel itself.
-The optional `.fnlfmt.fnl` file adjusts presentation settings and lets
+The optional `.fennelfmt.fnl` file adjusts presentation settings and lets
 third-party macros opt into the same layout rules; see
 [Configuration](#configuration). When it comes to where the line breaks are
 inserted, it tries its best, but there are certainly cases where a human
@@ -171,7 +175,7 @@ existing code where possible.
 
 * Comments will not be wrapped.
 * Single-semicolon full-line comments will not be changed to double-semicolon.
-* When using fnlfmt as a library, it may modify the AST argument.
+* When using fennelfmt as a library, it may modify the AST argument.
 * Function argument lists will be displayed one-per-line if they can't
   all fit on one line. (This is inherited from `fennel.view`.)
 
@@ -205,7 +209,7 @@ relationship is documented here and in the repository description instead.
 Remote layout:
 
 * `upstream` → <https://git.sr.ht/~technomancy/fnlfmt> (read-only reference)
-* `origin` → <https://github.com/tokyob0t/fnlfmt>
+* `origin` → <https://github.com/tokyob0t/fennelfmt>
 
 ### Divergence policy
 
@@ -222,7 +226,7 @@ Remote layout:
 ## Contributing
 
 For this fork, open an issue or pull request at
-<https://github.com/tokyob0t/fnlfmt>.
+<https://github.com/tokyob0t/fennelfmt>.
 
 Upstream contributions still go directly to the maintainer or the
 [Fennel mailing list](https://lists.sr.ht/%7Etechnomancy/fennel).
