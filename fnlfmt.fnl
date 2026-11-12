@@ -420,10 +420,6 @@ When f returns a truthy value, recursively walks the children."
   "Use previous line numbering to determine whether to space out forms."
   (not (and (line prev-ast) (line ast) (= 1 (- (line ast) (line prev-ast))))))
 
-(fn abort [filename]
-  (io.stderr:write (string.format "File not found: %s\n" filename))
-  (os.exit 1))
-
 (fn parse-form [value source raw]
   (if (and raw (or (= :string (type value)) (= :number (type value))))
       (setmetatable (doto source
@@ -438,41 +434,44 @@ When f returns a truthy value, recursively walks the children."
         no-comments (if (not= nil options.no-comments)
                         options.no-comments
                         settings.no-comments)
-        f (case filename
-            "-" io.stdin
-            _ (or (io.open filename :r) (abort filename)))
-        original (f:read :*all)
-        parser (-> (fennel.stringStream original)
-                   (fennel.parser filename
-                                  {:comments (not no-comments)
-                                   :plugins [{:name "fnlfmt"
-                                              :parse-form parse-form
-                                              :versions "^1%."}]}))
-        out []]
-    (f:close)
-    (var (skip-next? prev-ast) false)
-    (each [ok? ast parser]
-      (assert ok? ast)
-      (if (and skip-next? ast.bytestart ast.byteend)
-          (do
-            (table.insert out (original:sub ast.bytestart ast.byteend))
-            (set skip-next? false))
-          (= (fennel.comment ";; fnlfmt: skip") ast)
-          (do
-            (set skip-next? true)
-            (table.insert out "")
-            (table.insert out (tostring ast)))
-          (do
-            (when (and prev-ast (space-out-forms? prev-ast ast))
-              (table.insert out ""))
-            (table.insert out (fnlfmt ast settings))
-            (set skip-next? false)))
-      (set prev-ast ast))
-    (table.insert out "")
-    (let [formatted (table.concat out "\n")
-          formatted (if (= false settings.trailing-newline?)
-                        (formatted:gsub "\n$" "")
-                        formatted)]
-      (values formatted (not= formatted original)))))
+        (f err) (if (= filename "-")
+                    (values io.stdin nil)
+                    (io.open filename :r))]
+    (when (not f)
+      (error (or err (.. "cannot read " filename)) 0))
+    (let [original (f:read :*all)
+          parser (-> (fennel.stringStream original)
+                     (fennel.parser filename
+                                    {:comments (not no-comments)
+                                     :plugins [{:name "fnlfmt"
+                                                :parse-form parse-form
+                                                :versions "^1%."}]}))
+          out []]
+      (when (not= f io.stdin)
+        (f:close))
+      (var (skip-next? prev-ast) false)
+      (each [ok? ast parser]
+        (assert ok? ast)
+        (if (and skip-next? ast.bytestart ast.byteend)
+            (do
+              (table.insert out (original:sub ast.bytestart ast.byteend))
+              (set skip-next? false))
+            (= (fennel.comment ";; fnlfmt: skip") ast)
+            (do
+              (set skip-next? true)
+              (table.insert out "")
+              (table.insert out (tostring ast)))
+            (do
+              (when (and prev-ast (space-out-forms? prev-ast ast))
+                (table.insert out ""))
+              (table.insert out (fnlfmt ast settings))
+              (set skip-next? false)))
+        (set prev-ast ast))
+      (table.insert out "")
+      (let [formatted (table.concat out "\n")
+            formatted (if (= false settings.trailing-newline?)
+                          (formatted:gsub "\n$" "")
+                          formatted)]
+        (values formatted (not= formatted original) original)))))
 
 {: fnlfmt : format-file :version :0.4.0}

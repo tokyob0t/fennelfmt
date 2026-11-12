@@ -6,6 +6,7 @@ fnlfmt \- a code formatter for Fennel
 .SH SYNOPSIS
 .B fnlfmt
 [\fB--check\fR] |
+[\fB--diff\fR] |
 [\fB--fix\fR] |
 [\fB--no\-comments\fR] FILENAME...
 .br
@@ -35,6 +36,21 @@ Format the given file and write the result back to the original file.
 .TP
 .B \-\-check
 Fail (exit code 1) if the given file is not currently formatted.
+.TP
+.B \-\-diff
+Print a unified diff for each file that needs formatting instead of
+rewriting it, and exit with status 1 if any file needs changes.
+.TP
+.B \-\-stdin
+Read source from standard input. Cannot be combined with filenames.
+.TP
+.B \-\-quiet
+Suppress the
+.B "Not formatted"
+messages printed by
+.B \-\-check
+and
+.BR \-\-check\-indent .
 .TP
 .B \-\-indent
 Print the file with only its indentation fixed. This uses heuristics and

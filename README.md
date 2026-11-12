@@ -14,8 +14,11 @@ Format your Fennel!
     $ ./fnlfmt mycode.fnl # prints formatted code to standard out
     $ ./fnlfmt --fix mycode.fnl # replaces the file with formatted code
     $ ./fnlfmt --check mycode.fnl # checks if the file is formatted
+    $ ./fnlfmt --diff mycode.fnl # prints a unified diff; exits 1 if needed
+    $ ./fnlfmt --quiet --check mycode.fnl # no output, exit status only
     $ ./fnlfmt --indent mycode.fnl # print with indentation fixed only
     $ curl localhost:8080/my-file.fnl | ./fnlfmt - # pipe to stdin
+    $ cat my-file.fnl | ./fnlfmt --stdin # same, explicit
 
 You can skip reformatting of top-level forms by placing a comment
 before them. This does not work for nested forms.

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+* Add `--diff`, which prints a unified diff for files that need formatting
+  and exits 1 if any do, without writing to disk.
+* Add `--stdin` as an explicit alias for `-` and `--quiet` to suppress the
+  `Not formatted` messages from `--check` and `--check-indent`.
+* Report the operating system's actual error when a file cannot be read or
+  written instead of always saying `File not found`, and stop calling
+  `os.exit` from library code.
 * Fix binding, function-argument, and one-per-line alignment when `:indent`
   is not the default 2. These columns now follow the opening delimiter
   instead of the body indentation, so `:indent` only changes body lines.

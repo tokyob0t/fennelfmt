@@ -1,5 +1,6 @@
 (local fmt (require :fnlfmt))
 (local config (require :config))
+(local diff (require :diff))
 (local indent (require :indentation))
 
 (local cases [:top
@@ -387,6 +388,57 @@
              (and (= 1 code) (not= nil (out:find "must be a boolean" 1 true)))))
     (os.execute (.. "rm -rf '" root "'"))))
 
+(fn io-tests []
+  ;; Diff library.
+  (check :io/diff (= (diff.unified "(foo   bar)\n" "(foo bar)\n" "x.fnl")
+                     (.. "--- a/x.fnl\n+++ b/x.fnl\n@@ -1,1 +1,1 @@\n"
+                         "-(foo   bar)\n+(foo bar)\n")))
+  (check :io/diff-identical (= "" (diff.unified "(foo)\n" "(foo)\n" "x")))
+  (check :io/diff-insert
+         (= (diff.unified "" "a\n" "x")
+            "--- a/x\n+++ b/x\n@@ -0,0 +1,1 @@\n+a\n"))
+  (check :io/diff-absolute
+         (= (diff.unified "a\n" "b\n" "/tmp/x")
+            "--- a/tmp/x\n+++ b/tmp/x\n@@ -1,1 +1,1 @@\n-a\n+b\n"))
+  (let [root (tmpdir)
+        clean (write-into root "clean.fnl" "(foo bar)\n")
+        dirty (write-into root "dirty.fnl" "(foo   bar)\n")]
+    (let [(out code) (run (.. "./fnlfmt --no-config --diff '" dirty "'"))]
+      (check :io/diff-dirty
+             (and (= 1 code) (not= nil (out:find "--- a/" 1 true))
+                  (not= nil (out:find "-(foo   bar)" 1 true))
+                  (not= nil (out:find "+(foo bar)" 1 true)))))
+    (let [(out code) (run (.. "./fnlfmt --no-config --diff '" clean "'"))]
+      (check :io/diff-clean (and (= 0 code) (= out ""))))
+    (let [(out code) (run (.. "./fnlfmt --no-config --quiet --check '" dirty
+                              "'"))]
+      (check :io/quiet-check (and (= 1 code) (= out ""))))
+    (let [(out code) (run (.. "./fnlfmt --no-config --check '" dirty "'"))]
+      (check :io/check-message
+             (and (= 1 code) (not= nil (out:find "Not formatted" 1 true)))))
+    (let [(out code) (run (.. "./fnlfmt --no-config --quiet --check '" clean
+                              "'"))]
+      (check :io/quiet-clean (and (= 0 code) (= out ""))))
+    (let [(out code) (run "./fnlfmt --no-config /no/such/file.fnl")]
+      (check :io/missing-file
+             (and (= 1 code)
+                  (not= nil (out:find "No such file or directory" 1 true)))))
+    (os.execute (.. "rm -rf '" root "'")))
+  (let [(out code) (run "printf '(foo   bar)\\n' | ./fnlfmt --no-config --stdin")]
+    (check :io/stdin (and (= 0 code) (= out "(foo bar)\n"))))
+  (let [(out code) (run "printf '(foo   bar)\\n' | ./fnlfmt --no-config --stdin --diff")]
+    (check :io/stdin-diff
+           (and (= 1 code) (not= nil (out:find "--- a/stdin" 1 true)))))
+  (let [(out code) (run "printf '(foo\\n1)\\n' | ./fnlfmt --no-config --stdin --indent")]
+    (check :io/stdin-indent (and (= 0 code) (= out "(foo\n     1)\n"))))
+  (let [(out code) (run "printf '(foo)\\n' | ./fnlfmt --stdin --fix")]
+    (check :io/stdin-fix
+           (and (= 1 code) (not= nil (out:find "cannot write to stdin" 1 true)))))
+  (let [(out code) (run "./fnlfmt --stdin some.fnl")]
+    (check :io/stdin-filename
+           (and (= 1 code)
+                (not= nil (out:find "--stdin cannot be combined" 1 true))))))
+
 (each [_ name (ipairs (if (< 0 (length arg))
                           arg
                           cases))]
@@ -405,7 +457,8 @@
   (cli-tests)
   (config-tests)
   (classification-tests)
-  (option-tests))
+  (option-tests)
+  (io-tests))
 
 (print (: "%s passed, %s failed" :format pass (length failures)))
 (when (not= 0 (length failures))

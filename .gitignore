@@ -3,4 +3,5 @@
 /indentation.lua
 /config.lua
 /classify.lua
+/diff.lua
 /scratch.fnl
