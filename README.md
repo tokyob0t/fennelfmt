@@ -33,6 +33,17 @@ before them. This does not work for nested forms.
   (formatted :normally "again, haha"))
 ```
 
+## Development
+
+    $ make test   # run the golden-file and CLI test suite
+    $ make check  # test, verify the sources are self-hosted, and lint
+
+The build compiles with the vendored `fennel` (set `FENNEL`/`FENNEL_OPTS` to
+override), so it does not depend on a system-wide Fennel install. Run
+`make selfhost` after changing formatting behavior to reformat fnlfmt's own
+sources. `make check` also needs `fennel-ls` on `PATH`; it falls back to the
+Mason install location used by Neovim.
+
 ## Description
 
 The goal of `fnlfmt` is *not* to be The One Formatter that all Fennel

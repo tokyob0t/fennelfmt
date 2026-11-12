@@ -4,7 +4,7 @@
 
 ## Checklist
 
-- [ ] `make test` passes (`15 passed, 0 failed` and no new failures)
+- [ ] `make check` passes (tests, self-host check, and lint)
 - [ ] `changelog.md` updated for user-visible changes
 - [ ] Docs updated (`README.md`, `format.md`, `fnlfmt.1`) when flags or
       options change

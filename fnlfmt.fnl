@@ -313,8 +313,8 @@ number of handled arguments."
   (if (and cs (< 0 (length cs)))
       (.. (table.concat (icollect [_ c (ipairs cs)]
                           (tostring c))
-                        (.. "\n" (string.rep " " indent)))
-          "\n" (string.rep " " indent) x)
+                        (.. "\n" (string.rep " " indent))) "\n"
+          (string.rep " " indent) x)
       x))
 
 (fn shorthand-pair? [k v]
@@ -421,9 +421,11 @@ When f returns a truthy value, recursively walks the children."
             _ (or (io.open filename :r) (abort filename)))
         original (f:read :*all)
         parser (-> (fennel.stringStream original)
-                   (fennel.parser filename {:comments (not no-comments)
-                                            :plugins [{: parse-form
-                                                       :versions ["1.5.1"]}]}))
+                   (fennel.parser filename
+                                  {:comments (not no-comments)
+                                   :plugins [{:name "fnlfmt"
+                                              :parse-form parse-form
+                                              :versions "^1%."}]}))
         out []]
     (f:close)
     (var (skip-next? prev-ast) false)

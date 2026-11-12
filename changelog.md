@@ -1,5 +1,20 @@
 # History of user-visible changes
 
+## Unreleased
+
+* `--check` and `--check-indent` now exit with status 1 when a file needs
+  formatting; previously they always exited 0.
+* `--indent` and `--fix-indent` no longer drop the final line of a file that
+  lacks a trailing newline.
+* `--indent` no longer prints an extra trailing newline.
+* Silence the Fennel plugin version warning and build against the vendored
+  Fennel instead of any system-wide install.
+* Document `--indent`, `--fix-indent`, `--check-indent`, `--version`, and
+  `--help` in `--help` and the man page.
+* Install `indentation.lua` alongside `fnlfmt.lua`.
+* Add `make check` (tests, self-host check, lint) and GitHub Actions CI;
+  `make selfhost` now also covers `test.fnl`.
+
 ## 0.4.0 / 2026-09-27
 
 * Add support for `--indent`, `--check-indent`, and `--fix-indent`.
