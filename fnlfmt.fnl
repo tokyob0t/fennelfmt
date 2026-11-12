@@ -129,29 +129,34 @@ We want everything to be on one line as much as possible, (except for let)."
                                                       "[%z\001-\127\192-\247]")]
                       (+ n 1))))
 
-(fn view-init-body [t view inspector start-indent out callee]
+(fn view-init-body [t view inspector list-indent body-indent out callee]
   "Certain forms need special handling of their first few args. Returns the
 number of handled arguments."
   (let [classifier (inspector-classifier inspector)
         force? (classify.force-newline? classifier callee)]
-    (if force? (table.insert out (.. "\n" (string.rep " " start-indent)))
+    (if force? (table.insert out (.. "\n" (string.rep " " body-indent)))
         (not= nil (. t 2)) (table.insert out " "))
-    (let [indent (if force? start-indent (+ start-indent (slength callee)))
+    (let [;; The column where the second argument begins, independent of the
+          ;; body indentation width. Body forms still use body-indent for their
+          ;; own lines and for forced newlines.
+          arg-indent (if force?
+                         body-indent
+                         (+ list-indent 1 (slength callee) 1))
           ;; the handling of function args is very messy; sometimes they are
           ;; handled here and sometimes they're down in view-fn-args; kinda bad.
           second (if (and (classify.binding? classifier callee)
                           (not= :unquote (tostring (. t 2 1))))
-                     (view-binding (. t 2) view inspector (+ indent 1)
+                     (view-binding (. t 2) view inspector (+ arg-indent 1)
                                    (= :let callee)
                                    (if (fennel.list? (. t 2))
                                        (values "(" ")")
                                        (values "[" "]")))
-                     (view (. t 2) inspector indent))
-          indent2 (+ indent (length (second:match "[^\n]*$")))]
+                     (view (. t 2) inspector arg-indent))
+          indent2 (+ arg-indent (length (second:match "[^\n]*$")))]
       (when (not= nil (. t 2))
         (table.insert out second))
       (if (classify.function? classifier callee)
-          (view-fn-args t view inspector indent2 start-indent out)
+          (view-fn-args t view inspector indent2 body-indent out)
           3))))
 
 (fn match-same-line? [inspector callee i out viewed t]
@@ -195,15 +200,17 @@ number of handled arguments."
        (not (fennel.comment? (. t (- i 1)))) (originally-same-lines? t 1 i)
        (not (viewed:find "\n"))))
 
-(fn view-body [t view inspector start-indent out callee]
+(fn view-body [t view inspector list-indent out callee]
   "Insert arguments to a call to a special that takes body arguments."
-  (let [start-index (view-init-body t view inspector start-indent out callee)
+  (let [classifier (inspector-classifier inspector)
+        body-indent (+ list-indent classifier.indent)
+        start-index (view-init-body t view inspector list-indent body-indent
+                                    out callee)
         ;; do and if don't actually have special indentation but they do need
         ;; a newline after every form, so we can't use normal call formatting
-        indent (if (classify.one-per-line? (inspector-classifier inspector)
-                                           callee)
-                   (+ start-indent (length callee))
-                   start-indent)]
+        indent (if (classify.one-per-line? classifier callee)
+                   (+ list-indent (length callee) 2)
+                   body-indent)]
     (for [i (or start-index (+ (length t) 1)) (length t)]
       (let [viewed (view (. t i) inspector indent)
             body-indent (+ indent 1 (last-line-length (. out (length out))))]
@@ -268,13 +275,11 @@ number of handled arguments."
                         (+ i 2)) view)))
 
 (fn view-maybe-body [t view inspector indent start-indent out callee wrap]
-  (let [classifier (inspector-classifier inspector)]
-    (if (pairwise-if? inspector t indent 2 view)
-        (view-pairwise-if t view inspector indent out)
-        (not (originally-same-lines? t 2 3))
-        (view-body t view inspector (+ start-indent classifier.indent) out
-                   callee)
-        (view-call t view inspector indent out wrap))))
+  (if (pairwise-if? inspector t indent 2 view)
+      (view-pairwise-if t view inspector indent out)
+      (not (originally-same-lines? t 2 3))
+      (view-body t view inspector start-indent out callee)
+      (view-call t view inspector indent out wrap)))
 
 (fn newline-if-ends-in-comment [out indent]
   (when (: (. out (length out)) :match "^ *;[^\n]*$")
@@ -303,7 +308,7 @@ number of handled arguments."
             wrap (if classifier.align-calls? indent block-indent)]
         ;; indent differently if it's calling a special form with body args
         (if body?
-            (view-body t view inspector indent out callee)
+            (view-body t view inspector start-indent out callee)
             ;; in some cases we treat it differently depending on whether the
             ;; original code was multi-line or not
             (classify.maybe-body? classifier callee)

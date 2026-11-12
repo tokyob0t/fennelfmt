@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Fix binding, function-argument, and one-per-line alignment when `:indent`
+  is not the default 2. These columns now follow the opening delimiter
+  instead of the body indentation, so `:indent` only changes body lines.
 * Add optional configuration via `.fnlfmt.fnl`, parsed as data and validated
   rather than evaluated. It can be selected with `--config`, ignored with
   `--no-config`, or discovered from the nearest ancestor directory (falling
