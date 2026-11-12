@@ -108,8 +108,11 @@ looked up in the table of lines. Returns the column number to indent to."
   ;; three kinds of indentation:
   (case (identify-indent-type lines prev-line-num [] classifier)
     (:table opening) opening
-    (:body-special prev-indent) (+ prev-indent 2)
-    (:call prev-indent function-name) (+ prev-indent (length function-name) 2)
+    (:body-special prev-indent) (+ prev-indent classifier.indent)
+    (:call prev-indent function-name) (+ prev-indent
+                                         (if classifier.align-calls?
+                                             (+ (length function-name) 2)
+                                             classifier.indent))
     _ 0))
 
 (fn indent-line [line lines prev-line-num classifier]
@@ -121,14 +124,18 @@ looked up in the table of lines. Returns the column number to indent to."
 
 (fn indent [code ?settings]
   "Reformat an entire block of code."
-  (let [classifier (classify.build ?settings)
+  (let [settings (or ?settings {})
+        classifier (classify.build settings)
         lines []
         ;; Appending a newline makes the final line match even when the input
         ;; doesn't end with one, instead of silently dropping it.
         padded (.. code "\n")]
     (each [line (padded:gmatch "([^\n]*)\n")]
       (table.insert lines (indent-line line lines (length lines) classifier)))
-    (let [result (table.concat lines "\n")]
+    (let [result (table.concat lines "\n")
+          result (if (= false settings.trailing-newline?)
+                     (result:gsub "\n$" "")
+                     result)]
       (values result (not= result code)))))
 
 (fn indent-file [filename ?options]

@@ -16,6 +16,10 @@
   The same classification drives `--indent`.
 * Add the `:line-length` and `:no-comments` settings, plus `--print-config`
   to show the effective values and which source provided each one.
+* Add the `:indent` (body indentation width), `:align-calls?` (align or
+  block-indent wrapped call arguments), and `:trailing-newline?` options,
+  plus the `:style` presets `:wide` (line length 100) and `:block`
+  (block-indented calls). Explicit keys override a preset.
 * Fail with a file-and-line diagnostic on unknown keys, bad types, parse
   errors, and unsupported config versions.
 * Treat forms whose name starts with `fn/` or `λ/` as function definitions,
