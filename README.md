@@ -36,6 +36,41 @@ before them. This does not work for nested forms.
   (formatted :normally "again, haha"))
 ```
 
+### Neovim (conform.nvim)
+
+Install `fennelfmt` so it is on your `PATH`, then register it as a custom
+formatter. Conform pipes the buffer over stdin by default, so it needs `-`
+(or `--stdin`) explicitly:
+
+```lua
+require("conform").setup({
+  formatters = {
+    fennelfmt = {
+      command = "fennelfmt",
+      args = { "-" },
+      stdin = true, -- conform's default, shown for clarity
+    },
+  },
+  formatters_by_ft = {
+    fennel = { "fennelfmt" },
+  },
+})
+```
+
+With lazy.nvim, use the same fields in the plugin's `opts`:
+
+```lua
+{
+  "stevearc/conform.nvim",
+  opts = {
+    formatters = {
+      fennelfmt = { command = "fennelfmt", args = { "-" }, stdin = true },
+    },
+    formatters_by_ft = { fennel = { "fennelfmt" } },
+  },
+}
+```
+
 ## Configuration
 
 By default `fennelfmt` behaves exactly like upstream. Optional settings live
