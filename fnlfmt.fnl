@@ -63,6 +63,89 @@
               (set pos (+ (length text) 1))))))
     lines))
 
+(fn find-comment [line in-string?]
+  "Scan a line for a comment start. Returns the column and the string state
+at the end of the line, so multi-line strings are not mistaken for comments."
+  (var in-string? in-string?)
+  (var escaped? false)
+  (var pos 1)
+  (var found nil)
+  (while (and (<= pos (length line)) (not found))
+    (let [char (string.sub line pos pos)]
+      (if in-string?
+          (if escaped? (set escaped? false)
+              (= char "\\") (set escaped? true)
+              (= char "\"") (set in-string? false))
+          (= char "\"")
+          (set in-string? true)
+          (= char ";")
+          (set found pos)))
+    (set pos (+ pos 1)))
+  (values found in-string?))
+
+(fn trim-right [text]
+  (string.gsub text "%s+$" ""))
+
+(fn ends-with-opener? [text]
+  (let [last-char (string.sub text -1)]
+    (or (= last-char "[") (= last-char "{") (= last-char "("))))
+
+(fn newline-count [text]
+  (select 2 (string.gsub text "\n" "")))
+
+(fn excluded-output-lines [out skipped-elements]
+  "Map output line numbers covered by verbatim `;; fnlfmt: skip` slices."
+  (let [excluded {}]
+    (var line 1)
+    (each [index text (ipairs out)]
+      (let [count (newline-count text)]
+        (when (. skipped-elements index)
+          (for [i line (+ line count)]
+            (tset excluded i true)))
+        (set line (+ line count 1))))
+    excluded))
+
+(fn align-comment-runs [text ?excluded]
+  "Align trailing comments on consecutive lines to one common column.
+Own-line comments, comments directly after an opening delimiter, and lines
+inside skipped forms break a run and are left untouched."
+  (let [lines (split-lines text)
+        excluded (or ?excluded {})
+        trailing? (= "\n" (string.sub text -1))]
+    (var run [])
+    (var in-string? false)
+
+    (fn flush []
+      (when (< 0 (length run))
+        (let [width (accumulate [width 0 _ item (ipairs run)]
+                      (math.max width (length item.code)))]
+          (each [_ item (ipairs run)]
+            (tset lines item.line
+                  (.. item.code (string.rep " " (- width (length item.code)))
+                      " " item.comment))))
+        (set run [])))
+
+    (each [i line (ipairs lines)]
+      (let [(start next-state) (find-comment line in-string?)]
+        (set in-string? next-state)
+        (if (. excluded i)
+            (flush)
+            (if start
+                (let [prefix (string.sub line 1 (- start 1))
+                      code (trim-right prefix)]
+                  (if (and (code:match "%S") (not (ends-with-opener? code)))
+                      (table.insert run
+                                    {:line i
+                                     :code code
+                                     :comment (string.sub line start)})
+                      (flush)))
+                (flush)))))
+    (flush)
+    (let [result (table.concat lines "\n")]
+      (if (and trailing? (not= "" result))
+          (.. result "\n")
+          result))))
+
 (fn comment-trailing? [c previous-line]
   "True when comment shared a line with code. Falls back to comparing its
 line with the previous value's line when no source text is available."
@@ -390,7 +473,7 @@ number of handled arguments."
 
 (fn pair-end-column [text indent]
   "Column where the last line of a rendered pair ends. Multi-line pair text
-already carries its own absolute indentation; single-line text starts at the
+already carries its own absolute indentation ; single-line text starts at the
 table's content indent."
   (if (text:find "\n")
       (last-line-length text)
@@ -550,7 +633,8 @@ When f returns a truthy value, recursively walks the children."
                                      :plugins [{:name "fnlfmt"
                                                 :parse-form parse-form
                                                 :versions "^1%."}]}))
-          out []]
+          out []
+          skipped-elements {}]
       (when (not= f io.stdin)
         (f:close))
       (let [previous-source-lines current-source-lines]
@@ -567,6 +651,7 @@ When f returns a truthy value, recursively walks the children."
               (and skip-next? ast.bytestart ast.byteend)
               (do
                 (table.insert out (original:sub ast.bytestart ast.byteend))
+                (tset skipped-elements (length out) true)
                 (set skip-next? false))
               (= (fennel.comment ";; fnlfmt: skip") ast)
               (do
@@ -582,6 +667,9 @@ When f returns a truthy value, recursively walks the children."
         (set current-source-lines previous-source-lines))
       (table.insert out "")
       (let [formatted (table.concat out "\n")
+            formatted (align-comment-runs formatted
+                                          (excluded-output-lines out
+                                                                 skipped-elements))
             formatted (if (= false settings.trailing-newline?)
                           (formatted:gsub "\n$" "")
                           formatted)]
