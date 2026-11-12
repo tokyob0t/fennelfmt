@@ -2,6 +2,12 @@
 
 Format your Fennel!
 
+> **This is a fork.** Upstream is
+> [`~technomancy/fnlfmt`](https://git.sr.ht/~technomancy/fnlfmt) on SourceHut.
+> This fork is maintained by [@tokyob0t](https://github.com/tokyob0t) at
+> <https://github.com/tokyob0t/fnlfmt> and adds opt-in configuration while
+> keeping the upstream defaults unchanged. See [Fork notes](#fork-notes).
+
 ## Usage
 
     $ make install PREFIX=$HOME # or sudo make install in /usr/local
@@ -71,9 +77,37 @@ The file `macrodebug.fnl` contains a replacement for Fennel's
 `macrodebug` function which pretty-prints the macroexpansion using the
 full formatter.
 
+## Fork notes
+
+This repository is a **fork** of
+[`fnlfmt`](https://git.sr.ht/~technomancy/fnlfmt), originally written by Phil
+Hagelberg and contributors. The upstream project is hosted on SourceHut;
+GitHub's fork UI cannot link a repository to a non-GitHub upstream, so the
+relationship is documented here and in the repository description instead.
+
+Remote layout:
+
+* `upstream` → <https://git.sr.ht/~technomancy/fnlfmt> (read-only reference)
+* `origin` → <https://github.com/tokyob0t/fnlfmt>
+
+### Divergence policy
+
+* Defaults stay byte-for-byte compatible with upstream. New behavior is
+  opt-in through configuration, never enabled by accident.
+* All work happens on feature branches and lands on `main` through pull
+  requests, even for small changes.
+* Fork-specific changes are kept as isolated as possible so upstream patches
+  stay easy to rebase:
+
+      git fetch upstream
+      git rebase upstream/main
+
 ## Contributing
 
-Send patches or bug reports directly to the maintainer or the
+For this fork, open an issue or pull request at
+<https://github.com/tokyob0t/fnlfmt>.
+
+Upstream contributions still go directly to the maintainer or the
 [Fennel mailing list](https://lists.sr.ht/%7Etechnomancy/fennel).
 
 Please see [my contributing guide](https://technomancy.us/contributing)
