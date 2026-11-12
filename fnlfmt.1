@@ -107,6 +107,44 @@ Column after which calls are wrapped (default 80).
 .B :no-comments
 Boolean equivalent of
 .BR \-\-no\-comments .
+.TP
+.B :forms
+Table replacing the built-in form classification table.
+.TP
+.B :extra-forms
+Table of classifications added to the built-in table.
+.TP
+.B :form-patterns
+Ordered list of
+.B [pattern style]
+pairs matched against form names.
+.TP
+.B :unknown-form-style
+Style for forms that no table or pattern matches (default
+.BR :call ).
+.TP
+.B :infer-macros?
+Apply the built-in
+.BR with- ,
+.BR def ,
+.B fn/ ,
+and
+.B λ/
+naming conventions (default true).
+.PP
+The classification styles are
+.BR :call ,
+.BR :body ,
+.BR :binding ,
+.BR :function ,
+.BR :match ,
+.BR :conditional ,
+.BR :threading ,
+.BR :sequence ,
+.BR :block ,
+and
+.BR :maybe-body .
+See the README for what each one does.
 
 .SH DOCUMENTATION
 
@@ -177,8 +215,9 @@ Page breaks and other whitespace will not be preserved.
 .IP \(bu 2
 Macros that take a body argument but aren't built-in will only be
 indented correctly if their name starts with `with-`, `def`, `fn/`, or
-`λ/`. Functions which use this naming convention will be indented as
-if they were macros.
+`λ/`, or if a configuration file classifies them explicitly. Functions
+which use one of those naming conventions will be indented as if they
+were macros.
 
 .SH SEE ALSO
 

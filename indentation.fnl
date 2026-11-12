@@ -22,8 +22,8 @@
 ;;
 ;; "this is none of the above."
 
-(local fennel (require :fennel))
-(local syntax (fennel.syntax))
+(local config (require :config))
+(local classify (require :classify))
 
 (fn line-pos [line pos]
   (let [line (line:sub 1 pos)]
@@ -87,12 +87,7 @@ should continue looking to previous lines."
       ;; could hit false positives in multi-line strings
       (remove-comment line in-string? (+ pos 1))))
 
-(fn body-form? [callee]
-  (or (?. syntax callee :body-form?) (callee:find "%.with-")
-      (callee:find :^with-) (callee:find "%.def") (callee:find :^def)
-      (callee:find "^fn/") (callee:find "^λ/")))
-
-(fn identify-indent-type [lines last stack]
+(fn identify-indent-type [lines last stack classifier]
   "Distinguish between forms that are part of a table vs a function call.
 This function iterates backwards thru a table of lines to find where the current
 form begins. Also returns details about the position in the line."
@@ -100,42 +95,46 @@ form begins. Also returns details about the position in the line."
     (case (identify-line line (length line) stack)
       (:table pos) (values :table pos)
       (:call pos) (let [callee-name (symbol-at line (+ pos 1))]
-                    (if (body-form? callee-name)
+                    (if (classify.body? classifier callee-name)
                         (values :body-special (- pos 1))
                         (values :call (- pos 1) callee-name)))
       _ (if (< 1 last)
-            (identify-indent-type lines (- last 1) stack)))))
+            (identify-indent-type lines (- last 1) stack classifier)))))
 
-(fn indentation [lines prev-line-num]
+(fn indentation [lines prev-line-num classifier]
   "Return indentation for a line, given a table of lines and a number offset.
 The prev-line-num indicates the line previous to the current line, which will be
 looked up in the table of lines. Returns the column number to indent to."
   ;; three kinds of indentation:
-  (case (identify-indent-type lines prev-line-num [])
+  (case (identify-indent-type lines prev-line-num [] classifier)
     (:table opening) opening
     (:body-special prev-indent) (+ prev-indent 2)
     (:call prev-indent function-name) (+ prev-indent (length function-name) 2)
     _ 0))
 
-(fn indent-line [line lines prev-line-num]
+(fn indent-line [line lines prev-line-num classifier]
   (let [without-indentation (line:match "[^%s]+.*")]
     (if without-indentation
-        (.. (: " " :rep (indentation lines prev-line-num)) without-indentation)
+        (.. (: " " :rep (indentation lines prev-line-num classifier))
+            without-indentation)
         "")))
 
-(fn indent [code]
+(fn indent [code ?settings]
   "Reformat an entire block of code."
-  (let [lines []
+  (let [classifier (classify.build ?settings)
+        lines []
         ;; Appending a newline makes the final line match even when the input
         ;; doesn't end with one, instead of silently dropping it.
         padded (.. code "\n")]
     (each [line (padded:gmatch "([^\n]*)\n")]
-      (table.insert lines (indent-line line lines (length lines))))
+      (table.insert lines (indent-line line lines (length lines) classifier)))
     (let [result (table.concat lines "\n")]
       (values result (not= result code)))))
 
-(fn indent-file [filename]
-  (with-open [f (assert (io.open filename))]
-    (indent (f:read :*all))))
+(fn indent-file [filename ?options]
+  (let [options (or ?options {})
+        settings (or options.settings (config.resolve filename options))]
+    (with-open [f (assert (io.open filename))]
+      (indent (f:read :*all) settings))))
 
 {: indent : indent-file : indentation}

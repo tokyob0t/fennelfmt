@@ -45,8 +45,10 @@ all arguments past that are indented two spaces in.
 The indentation for `fn` and `lambda` are similar, except they accept an
 optional name before their arglist.
 
-Third-party macros will be treated this way if their name starts with
-`def`, `with-`, `fn/`, or `λ/`.
+By default, third-party macros are treated this way if their name starts
+with `def`, `with-`, `fn/`, or `λ/`. A `.fnlfmt.fnl` file can add or
+override those classifications for macros that use different naming
+conventions; see [Configuration](#configuration).
 
 Finally `if` and the `case` family are treated differently; if possible it
 will attempt to pair off their pattern/condition clauses with the body
@@ -109,7 +111,11 @@ be one line if the original code had them as one-liners.
 
 The line length defaults to 80 columns and can be changed with a
 `.fnlfmt.fnl` file; see the [README](README.md#configuration) for
-discovery rules and the full list of settings. Configuration only
-adjusts presentation options. The classification of forms and the
-shape of the output otherwise follow the rules in this document, and
-the defaults match upstream `fnlfmt` exactly.
+discovery rules and the full list of settings. Configuration also lets
+third-party macros opt into the styles described above through
+`:extra-forms`, `:form-patterns`, and `:unknown-form-style`. The
+default classification and all other behavior match upstream `fnlfmt`
+exactly; a config file can only change what it names or overrides.
+
+The repository's own [`.fnlfmt.fnl`](.fnlfmt.fnl) lists every key and the
+full default classification table as a reference.

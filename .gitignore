@@ -2,4 +2,5 @@
 /fnlfmt.lua
 /indentation.lua
 /config.lua
+/classify.lua
 /scratch.fnl
