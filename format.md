@@ -20,7 +20,8 @@ for section headers. This is not currently enforced by `fnlfmt`.
 There are three ways that calls (aka lists) can be formatted. The
 default style used for functions and most macros is to put successive
 arguments on the same line as the first, up till the point where the
-arguments exceed 80 columns, at which a new line is started which
+arguments exceed the line length (80 columns by default; see
+[Configuration](#configuration)), at which a new line is started which
 lines up with the first argument:
 
 ```fennel
@@ -103,3 +104,12 @@ body form get empty lines spacing them out as well.
 
 Similarly `if` forms and arrow forms will occasionally be allowed to
 be one line if the original code had them as one-liners.
+
+## Configuration
+
+The line length defaults to 80 columns and can be changed with a
+`.fnlfmt.fnl` file; see the [README](README.md#configuration) for
+discovery rules and the full list of settings. Configuration only
+adjusts presentation options. The classification of forms and the
+shape of the output otherwise follow the rules in this document, and
+the defaults match upstream `fnlfmt` exactly.
