@@ -33,6 +33,44 @@ before them. This does not work for nested forms.
   (formatted :normally "again, haha"))
 ```
 
+## Configuration
+
+By default `fnlfmt` behaves exactly like upstream. Optional settings live in a
+`.fnlfmt.fnl` file written as Fennel data; it is parsed and validated, never
+evaluated:
+
+```fennel
+{:version 1
+ :style :default
+ :line-length 80
+ :no-comments false}
+```
+
+One config file is selected, without merging:
+
+1. `--config PATH` (or `FNLFMT_CONFIG`), if given;
+2. otherwise the nearest `.fnlfmt.fnl` found by walking up from the file's
+   directory;
+3. otherwise `$XDG_CONFIG_HOME/fnlfmt/config.fnl` (or
+   `~/.config/fnlfmt/config.fnl`).
+
+`--no-config` ignores every config file. Command line flags such as
+`--no-comments` override values from the selected file. Unknown keys,
+unsupported versions, and malformed files fail with a message that includes
+the file and line, and exit with status 1.
+
+Available settings:
+
+| Key            | Type    | Default    | Meaning                                  |
+|----------------|---------|------------|------------------------------------------|
+| `:version`     | number  | `1`        | Config format version; must be `1`.      |
+| `:style`       | string  | `:default` | Preset name. Only `:default` for now.    |
+| `:line-length` | number  | `80`       | Column after which calls are wrapped.    |
+| `:no-comments` | boolean | `false`    | Strip comments, like `--no-comments`.    |
+
+Use `fnlfmt --print-config FILE` to see the effective settings and where each
+one came from.
+
 ## Development
 
     $ make test   # run the golden-file and CLI test suite
@@ -54,12 +92,14 @@ support in cases where for whatever reason the editor functionality
 cannot be used. This means that `fnlfmt` should be treated as one
 implementation of the standard format rather than being canonical itself.
 
-By design there is no way to configure it. When it comes to
-indentation, the choices it makes should be correct other than bugs or
-when new features are added to Fennel itself. When it comes to where
-the line breaks are inserted, it tries its best, but there are
-certainly cases where a human could do better. Sometimes when it comes
-to line breaks it will defer to the existing code where possible.
+By design the defaults are not configurable in the sense of changing how
+the formatter interprets code: formatting choices should be correct other
+than bugs or when new features are added to Fennel itself. The optional
+`.fnlfmt.fnl` file only adjusts presentation settings such as the line
+length; see [Configuration](#configuration). When it comes to where the
+line breaks are inserted, it tries its best, but there are certainly cases
+where a human could do better. Sometimes when it comes to line breaks it
+will defer to the existing code where possible.
 
 ## Known issues
 

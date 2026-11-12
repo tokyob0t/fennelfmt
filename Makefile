@@ -14,8 +14,8 @@ LUA_LIB_DIR ?= $(PREFIX)/share/lua/$(LUA_VERSION)
 FENNEL_LS ?= $(shell command -v fennel-ls 2>/dev/null \
 	|| echo $(HOME)/.local/share/nvim/mason/bin/fennel-ls)
 
-SRC=cli.fnl fnlfmt.fnl indentation.fnl
-SELF_HOSTED=fnlfmt.fnl cli.fnl indentation.fnl macrodebug.fnl test.fnl
+SRC=cli.fnl fnlfmt.fnl indentation.fnl config.fnl
+SELF_HOSTED=fnlfmt.fnl cli.fnl indentation.fnl config.fnl macrodebug.fnl test.fnl
 
 fnlfmt: $(SRC)
 	echo "#!/usr/bin/env $(LUA)" > $@
@@ -28,6 +28,9 @@ fnlfmt.lua: fnlfmt.fnl
 indentation.lua: indentation.fnl
 	$(FENNEL_ENV) $(FENNEL) --compile $< > $@
 
+config.lua: config.fnl
+	$(FENNEL_ENV) $(FENNEL) --compile $< > $@
+
 selfhost: fnlfmt
 	./fnlfmt --fix $(SELF_HOSTED)
 
@@ -37,16 +40,16 @@ fennel: ../fennel/fennel ; cp $< $@
 
 test: fnlfmt ; $(FENNEL_ENV) $(FENNEL) test.fnl
 count: ; cloc fnlfmt.fnl
-clean: ; rm -f fnlfmt fnlfmt.lua indentation.lua
+clean: ; rm -f fnlfmt fnlfmt.lua indentation.lua config.lua
 lint: ; $(FENNEL_LS) --lint $(SRC)
 
 check: test
 	./fnlfmt --check $(SELF_HOSTED)
 	$(FENNEL_LS) --lint $(SRC)
 
-install: fnlfmt fnlfmt.lua indentation.lua
+install: fnlfmt fnlfmt.lua indentation.lua config.lua
 	mkdir -p $(DESTDIR)$(BIN_DIR) && cp fnlfmt $(DESTDIR)$(BIN_DIR)/
-	mkdir -p $(DESTDIR)$(LUA_LIB_DIR) && cp fnlfmt.lua indentation.lua $(DESTDIR)$(LUA_LIB_DIR)
+	mkdir -p $(DESTDIR)$(LUA_LIB_DIR) && cp fnlfmt.lua indentation.lua config.lua $(DESTDIR)$(LUA_LIB_DIR)
 	mkdir -p $(DESTDIR)$(MAN_DIR)
 	cp fnlfmt.1 $(DESTDIR)$(MAN_DIR)/fnlfmt.1
 
@@ -54,6 +57,7 @@ uninstall:
 	rm -f $(DESTDIR)$(BIN_DIR)/fnlfmt
 	rm -f $(DESTDIR)$(LUA_LIB_DIR)/fnlfmt.lua
 	rm -f $(DESTDIR)$(LUA_LIB_DIR)/indentation.lua
+	rm -f $(DESTDIR)$(LUA_LIB_DIR)/config.lua
 	rm -f $(DESTDIR)$(MAN_DIR)/fnlfmt.1
 
 .PHONY: selfhost test check count clean lint install uninstall

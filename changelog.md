@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+* Add optional configuration via `.fnlfmt.fnl`, parsed as data and validated
+  rather than evaluated. It can be selected with `--config`, ignored with
+  `--no-config`, or discovered from the nearest ancestor directory (falling
+  back to `$XDG_CONFIG_HOME/fnlfmt/config.fnl`). Defaults still match
+  upstream byte for byte.
+* Add the `:line-length` and `:no-comments` settings, plus `--print-config`
+  to show the effective values and which source provided each one.
+* Fail with a file-and-line diagnostic on unknown keys, bad types, parse
+  errors, and unsupported config versions.
 * Treat forms whose name starts with `fn/` or `λ/` as function definitions,
   so macros like `fn/a` get their argument list on the first line and their
   body on separate lines. This matches how `with-` and `def` forms were

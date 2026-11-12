@@ -57,6 +57,56 @@ Print a usage summary and exit.
 .TP
 .B \-\-no\-comments
 Strip comments from the file.
+.TP
+.B \-\-config PATH
+Use PATH instead of discovering a configuration file.
+.TP
+.B \-\-no\-config
+Ignore all configuration files.
+.TP
+.B \-\-print\-config
+Print the effective configuration and where each value came from, then exit.
+
+.SH CONFIGURATION
+
+Configuration is optional and disabled by default. Settings live in a
+.B .fnlfmt.fnl
+file written as Fennel data; it is parsed and validated, never evaluated.
+Exactly one file is selected, without merging: the path given to
+.BR \-\-config ,
+else the path in the
+.B FNLFMT_CONFIG
+environment variable, else the nearest
+.B .fnlfmt.fnl
+found by walking up from the formatted file's directory, else
+.B $XDG_CONFIG_HOME/fnlfmt/config.fnl
+(or
+.BR ~/.config/fnlfmt/config.fnl ).
+.PP
+Command line flags such as
+.B \-\-no\-comments
+override values from the selected file.
+.B \-\-no\-config
+ignores all configuration files, and
+.B \-\-print\-config
+shows the effective values and their provenance.
+.PP
+The available keys are:
+.TP
+.B :version
+Config format version; must be 1.
+.TP
+.B :style
+Preset name. Only
+.B :default
+is currently available.
+.TP
+.B :line-length
+Column after which calls are wrapped (default 80).
+.TP
+.B :no-comments
+Boolean equivalent of
+.BR \-\-no\-comments .
 
 .SH DOCUMENTATION
 
@@ -102,9 +152,11 @@ body form get empty lines spacing them out as well.
 Similarly if forms and arrow forms will occasionally be allowed to
 be one line if the original code had them as one-liners.
 .PP
-By design there is no way to configure it; the indentation should be
-considered canonical other than bugs or when new features are added to
-Fennel itself.
+By design the defaults are not configurable in the sense of changing how
+the formatter interprets code; the indentation should be considered
+canonical other than bugs or when new features are added to Fennel itself.
+The optional configuration file only adjusts presentation settings such as
+the line length; see the CONFIGURATION section above.
 
 .SH KNOWN ISSUES
 

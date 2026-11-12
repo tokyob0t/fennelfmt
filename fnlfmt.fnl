@@ -12,6 +12,7 @@
 ;; where to place newlines.
 
 (local fennel (require :fennel))
+(local config (require :config))
 (local unpack (or table.unpack _G.unpack))
 
 (local syntax (fennel.syntax))
@@ -62,22 +63,22 @@ Returns the index of where the body of the function starts."
   (let [last (or (. out (length out)) "")]
     (not (: (last:match "[^\n]*$") :match "[^ ]"))))
 
-(fn break-pair? [let? count viewed next-ast next-next indent]
+(fn break-pair? [inspector let? count viewed next-ast next-next indent]
   (if let?
       (and (= 1 (math.fmod count 2))
            (not (and (fennel.comment? next-ast)
                      ; does the trailing comment fit?
                      (<= (+ indent 1 (last-line-length viewed) 1
                             (length (tostring next-ast)))
-                         80))))
+                         inspector.line-length))))
       ;; if it's not a let, it's probably an iterator binding
       (and (or (string? next-ast) (: (tostring next-ast) :find "^&"))
-           (< 80 (+ indent 1 (last-line-length viewed) 1
-                    (length (tostring next-ast))
-                    (length (fennel.view next-next)))))))
+           (< inspector.line-length
+              (+ indent 1 (last-line-length viewed) 1
+                 (length (tostring next-ast)) (length (fennel.view next-next)))))))
 
-(fn binding-comment [c indent out start-indent]
-  (when (and (< 80 (+ indent (length (tostring c))))
+(fn binding-comment [inspector c indent out start-indent]
+  (when (and (< inspector.line-length (+ indent (length (tostring c))))
              (: (. out (length out)) :match "^[^%s]"))
     (table.insert out (.. "\n" (string.rep " " start-indent))))
   (when (and (not (first-thing-in-line? out)) (not= (length out) 1))
@@ -94,7 +95,8 @@ We want everything to be on one line as much as possible, (except for let)."
       (while (fennel.comment? (. bindings (+ i offset)))
         ;; when a binding has a comment in it, emit it but don't let it throw
         ;; off the name/value pair counting
-        (binding-comment (. bindings (+ i offset)) indent out start-indent)
+        (binding-comment inspector (. bindings (+ i offset)) indent out
+                         start-indent)
         (set (indent offset) (values start-indent (+ offset 1))))
       (let [i (+ offset i)
             viewed (view (. bindings i) inspector indent)]
@@ -102,7 +104,7 @@ We want everything to be on one line as much as possible, (except for let)."
           (table.insert out viewed)
           (set non-comment-count (+ non-comment-count 1))
           (when (< i (length bindings))
-            (if (break-pair? pair-wise? non-comment-count viewed
+            (if (break-pair? inspector pair-wise? non-comment-count viewed
                              (. bindings (+ i 1)) (. bindings (+ i 2)) indent)
                 (do
                   (table.insert out (.. "\n" (string.rep " " start-indent)))
@@ -158,14 +160,15 @@ number of handled arguments."
 (fn match? [callee]
   (. {:match true :case true :match-try true :case-try true} callee))
 
-(fn match-same-line? [callee i out viewed t]
+(fn match-same-line? [inspector callee i out viewed t]
   ;; just don't even try if there's comments!
   (and (match? callee) (= 0 (math.fmod i 2)) (not (any? t fennel.comment?))
        (<= (+ (or (string.find viewed "\n") (length (viewed:match "[^\n]*$")))
-              1 (last-line-length (. out (length out)))) 80)))
+              1 (last-line-length (. out (length out))))
+           inspector.line-length)))
 
-(fn trailing-comment? [viewed body-indent]
-  (and (viewed:match "^; ") (<= body-indent 80)))
+(fn trailing-comment? [inspector viewed body-indent]
+  (and (viewed:match "^; ") (<= body-indent inspector.line-length)))
 
 (local one-element-per-line-forms {:-> true
                                    :->> true
@@ -197,10 +200,11 @@ number of handled arguments."
       (accumulate [d (+ base 1) _ elem (pairs form)]
         (math.max d (depth elem (+ base 1))))))
 
-(fn preserve-same-line? [t i indent out viewed depth]
-  (and (<= (+ indent (length (table.concat out)) (length viewed)) 80)
-       (<= depth 3) (not (fennel.comment? (. t (- i 1))))
-       (originally-same-lines? t 1 i) (not (viewed:find "\n"))))
+(fn preserve-same-line? [inspector t i indent out viewed depth]
+  (and (<= (+ indent (length (table.concat out)) (length viewed))
+           inspector.line-length) (<= depth 3)
+       (not (fennel.comment? (. t (- i 1)))) (originally-same-lines? t 1 i)
+       (not (viewed:find "\n"))))
 
 (fn view-body [t view inspector start-indent out callee]
   "Insert arguments to a call to a special that takes body arguments."
@@ -213,9 +217,10 @@ number of handled arguments."
     (for [i (or start-index (+ (length t) 1)) (length t)]
       (let [viewed (view (. t i) inspector indent)
             body-indent (+ indent 1 (last-line-length (. out (length out))))]
-        (if (or (match-same-line? callee i out viewed t)
-                (preserve-same-line? t i indent out viewed (depth t 0))
-                (trailing-comment? viewed body-indent))
+        (if (or (match-same-line? inspector callee i out viewed t)
+                (preserve-same-line? inspector t i indent out viewed
+                                     (depth t 0))
+                (trailing-comment? inspector viewed body-indent))
             (do
               (table.insert out " ")
               (table.insert out (view (. t i) inspector body-indent)))
@@ -259,17 +264,19 @@ number of handled arguments."
 (fn if-pair [view a b c]
   (.. (view a) " " (view b) (if (fennel.comment? c) (.. " " (view c)) "")))
 
-(fn pairwise-if? [t indent i view]
+(fn pairwise-if? [inspector t indent i view]
   (if (< (length (strip-comments t)) 5) false
       (not= :if (tostring (. t 1))) false
       (not (. t i)) true
-      (< 80 (+ indent 1 (length (if-pair view (select i (unpack t)))))) false
-      (pairwise-if? t indent (if (fennel.comment (. t (+ i 2)))
-                                 (+ i 3)
-                                 (+ i 2)) view)))
+      (< inspector.line-length
+         (+ indent 1 (length (if-pair view (select i (unpack t)))))) false
+      (pairwise-if? inspector t indent
+                    (if (fennel.comment (. t (+ i 2)))
+                        (+ i 3)
+                        (+ i 2)) view)))
 
 (fn view-maybe-body [t view inspector indent start-indent out callee]
-  (if (pairwise-if? t indent 2 view)
+  (if (pairwise-if? inspector t indent 2 view)
       (view-pairwise-if t view inspector indent out)
       (not (originally-same-lines? t 2 3))
       (view-body t view inspector (+ start-indent 2) out callee)
@@ -390,9 +397,10 @@ When f returns a truthy value, recursively walks the children."
   (and (s:find "^[-%w?^_!$%&*+./|<=>]+$")
        (not (s:find "^[-?^_!$%&*+./@|<=>%\\]+$"))))
 
-(fn fnlfmt [ast]
+(fn fnlfmt [ast ?settings]
   "Return a formatted representation of ast."
-  (let [{&as list-mt : __fennelview} (getmetatable (fennel.list))
+  (let [settings (or ?settings {})
+        {&as list-mt : __fennelview} (getmetatable (fennel.list))
         ;; list's metamethod for fennelview is where the magic happens!
         _ (set list-mt.__fennelview view-list)
         ;; this would be better if we operated on a copy!
@@ -400,6 +408,7 @@ When f returns a truthy value, recursively walks the children."
         (ok? val) (pcall fennel.view ast
                          {:empty-as-sequence? true
                           :escape-newlines? true
+                          :line-length (or settings.line-length 80)
                           : prefer-colon?})]
     ;; clean up after the metamethod patching
     (set list-mt.__fennelview __fennelview)
@@ -421,9 +430,14 @@ When f returns a truthy value, recursively walks the children."
                       (tset :value value)) raw-mt)
       value))
 
-(fn format-file [filename {: no-comments}]
+(fn format-file [filename ?options]
   "Read source from a file and return formatted source."
-  (let [f (case filename
+  (let [options (or ?options {})
+        settings (or options.settings (config.resolve filename options))
+        no-comments (if (not= nil options.no-comments)
+                        options.no-comments
+                        settings.no-comments)
+        f (case filename
             "-" io.stdin
             _ (or (io.open filename :r) (abort filename)))
         original (f:read :*all)
@@ -450,7 +464,7 @@ When f returns a truthy value, recursively walks the children."
           (do
             (when (and prev-ast (space-out-forms? prev-ast ast))
               (table.insert out ""))
-            (table.insert out (fnlfmt ast))
+            (table.insert out (fnlfmt ast settings))
             (set skip-next? false)))
       (set prev-ast ast))
     (table.insert out "")
