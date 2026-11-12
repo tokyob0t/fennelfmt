@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## Unreleased
+## 0.5.0 / 2026-11-12
 
 * Add `--diff`, which prints a unified diff for files that need formatting
   and exits 1 if any do, without writing to disk.

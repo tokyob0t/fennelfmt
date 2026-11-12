@@ -474,4 +474,4 @@ When f returns a truthy value, recursively walks the children."
                           formatted)]
         (values formatted (not= formatted original) original)))))
 
-{: fnlfmt : format-file :version :0.4.0}
+{: fnlfmt : format-file :version :0.5.0}
