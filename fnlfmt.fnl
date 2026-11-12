@@ -22,6 +22,10 @@
 ;; so fall back to the classifier of the formatting run in progress.
 (var current-classifier nil)
 
+;; Source lines of the file being formatted, used to tell whether a comment
+;; shared a line with code. Nil when fnlfmt is called directly on an AST.
+(var current-source-lines nil)
+
 (fn inspector-classifier [inspector]
   (or inspector.classifier current-classifier))
 
@@ -36,8 +40,41 @@
       ast.line
       (. (fennel.ast-source ast) :line)))
 
+(fn end-line [ast]
+  (if (= raw-mt (getmetatable ast))
+      ast.line
+      (let [source (fennel.ast-source ast)]
+        (or (. source :endline) (. source :line) (line ast)))))
+
 (fn last-line-length [line]
   (length (line:match "[^\n]*$")))
+
+(fn split-lines [text]
+  (let [lines []]
+    (var pos 1)
+    (while (<= pos (length text))
+      (let [newline (string.find text "\n" pos true)]
+        (if newline
+            (do
+              (table.insert lines (string.sub text pos (- newline 1)))
+              (set pos (+ newline 1)))
+            (do
+              (table.insert lines (string.sub text pos))
+              (set pos (+ (length text) 1))))))
+    lines))
+
+(fn comment-trailing? [c previous-line]
+  "True when comment shared a line with code. Falls back to comparing its
+line with the previous value's line when no source text is available."
+  (let [comment-line (line c)]
+    (if (and comment-line current-source-lines)
+        (let [source (. current-source-lines comment-line)
+              text (tostring c)
+              start (and source (string.find source text 1 true))]
+          (when start
+            (let [prefix (source:sub 1 (- start 1))]
+              (not= nil (prefix:match "%S")))))
+        (and previous-line (= previous-line comment-line)))))
 
 (fn any? [tbl pred]
   (accumulate [found false _ v (pairs tbl) :until found]
@@ -330,12 +367,12 @@ number of handled arguments."
 (fn shorthand-pair? [k v]
   (and (= :string (type k)) (fennel.sym? v) (= k (tostring v))))
 
-(fn view-pair [t view inspector indent mt key]
+(fn view-pair [t view inspector indent mt key key-comments]
   (let [val (. t key)
         k (if (shorthand-pair? key val) ":"
               (view key inspector (+ indent 1) true))
         v (view val inspector (+ indent (slength k) 1))]
-    (.. (maybe-attach-comment k indent (?. mt :comments :keys key)) " "
+    (.. (maybe-attach-comment k indent key-comments) " "
         (maybe-attach-comment v indent (?. mt :comments :values val)))))
 
 (fn view-multiline-kv [pair-strs indent last-comments]
@@ -346,6 +383,33 @@ number of handled arguments."
         (table.insert pair-strs "}")
         (.. "{" (table.concat pair-strs (.. "\n" (string.rep " " indent)))))
       (.. "{" (table.concat pair-strs (.. "\n" (string.rep " " indent))) "}")))
+
+(fn trailing-count [pair-records]
+  (accumulate [n 0 _ record (ipairs pair-records)]
+    (+ n (length record.trailing))))
+
+(fn align-trailing-comments [pair-records indent]
+  "Attach trailing comments to their pair. When several pairs have one, align
+them one column after the widest pair in the table."
+  (let [count (trailing-count pair-records)
+        max-width (if (< 1 count)
+                      (accumulate [width 0 _ record (ipairs pair-records)]
+                        (if (< 0 (length record.trailing))
+                            (math.max width (last-line-length record.text))
+                            width))
+                      nil)]
+    (each [_ record (ipairs pair-records)]
+      (when (< 0 (length record.trailing))
+        (let [width (last-line-length record.text)
+              spaces (if max-width
+                         (math.max 1 (- (+ max-width 1) width))
+                         1)]
+          (each [i c (ipairs record.trailing)]
+            (set record.text (.. record.text
+                                 (if (= i 1)
+                                     (string.rep " " spaces)
+                                     (.. "\n" (string.rep " " indent)))
+                                 (tostring c)))))))))
 
 (fn sorter [a b]
   (if (= (type a) (type b))
@@ -359,13 +423,44 @@ know what to do with : foo shorthand notation, and it doesn't emit comments."
         mt (getmetatable t)
         keys (or mt.keys (doto (icollect [k (pairs t)] k)
                            (table.sort sorter)))
-        pair-strs (icollect [_ k (ipairs keys)]
-                    (view-pair t view inspector indent mt k))
-        oneline (.. "{" (table.concat pair-strs " ") "}")]
-    (if (or (oneline:match "\n") (?. mt :comments :last 1)
-            (< inspector.line-length (+ indent (length oneline))))
-        (view-multiline-kv pair-strs indent (?. mt :comments :last))
-        oneline)))
+        pair-records []
+        leading-last []]
+    (var prev-line nil)
+    (var has-trailing? false)
+    (each [_ key (ipairs keys)]
+      (let [val (. t key)
+            key-comments (or (?. mt :comments :keys key) [])
+            leading []
+            trailing []]
+        (each [_ c (ipairs key-comments)]
+          (if (and prev-line (comment-trailing? c prev-line))
+              (table.insert trailing c)
+              (table.insert leading c)))
+        (let [text (view-pair t view inspector indent mt key leading)
+              previous (. pair-records (length pair-records))]
+          (when (and previous (< 0 (length trailing)))
+            (set has-trailing? true)
+            (each [_ c (ipairs trailing)]
+              (table.insert previous.trailing c)))
+          (table.insert pair-records {:text text :trailing []})
+          (set prev-line (line val)))))
+    (each [_ c (ipairs (or (?. mt :comments :last) []))]
+      (if (and (< 0 (length pair-records)) (comment-trailing? c prev-line))
+          (do
+            (set has-trailing? true)
+            (let [last-record (. pair-records (length pair-records))]
+              (table.insert last-record.trailing c)))
+          (table.insert leading-last c)))
+    (let [pair-strs (icollect [_ record (ipairs pair-records)] record.text)
+          oneline (.. "{" (table.concat pair-strs " ") "}")]
+      (if (or has-trailing? (oneline:match "\n") (?. mt :comments :last 1)
+              (< inspector.line-length (+ indent (length oneline))))
+          (do
+            (align-trailing-comments pair-records indent)
+            (view-multiline-kv (icollect [_ record (ipairs pair-records)]
+                                 record.text)
+                               indent leading-last))
+          oneline))))
 
 (fn walk-tree [root f ?custom-iterator]
   "Walks a tree (like the AST), invoking f(node, idx, parent) on each node.
@@ -449,24 +544,33 @@ When f returns a truthy value, recursively walks the children."
           out []]
       (when (not= f io.stdin)
         (f:close))
-      (var (skip-next? prev-ast) false)
-      (each [ok? ast parser]
-        (assert ok? ast)
-        (if (and skip-next? ast.bytestart ast.byteend)
-            (do
-              (table.insert out (original:sub ast.bytestart ast.byteend))
-              (set skip-next? false))
-            (= (fennel.comment ";; fnlfmt: skip") ast)
-            (do
-              (set skip-next? true)
-              (table.insert out "")
-              (table.insert out (tostring ast)))
-            (do
-              (when (and prev-ast (space-out-forms? prev-ast ast))
-                (table.insert out ""))
-              (table.insert out (fnlfmt ast settings))
-              (set skip-next? false)))
-        (set prev-ast ast))
+      (let [previous-source-lines current-source-lines]
+        (set current-source-lines (split-lines original))
+        (var (skip-next? prev-ast) false)
+        (each [ok? ast parser]
+          (assert ok? ast)
+          (if (and (fennel.comment? ast) prev-ast
+                   (= (line ast) (end-line prev-ast)))
+              ;; A comment that shared a line with the previous form stays
+              ;; attached to it.
+              (tset out (length out)
+                    (.. (. out (length out)) " " (tostring ast)))
+              (and skip-next? ast.bytestart ast.byteend)
+              (do
+                (table.insert out (original:sub ast.bytestart ast.byteend))
+                (set skip-next? false))
+              (= (fennel.comment ";; fnlfmt: skip") ast)
+              (do
+                (set skip-next? true)
+                (table.insert out "")
+                (table.insert out (tostring ast)))
+              (do
+                (when (and prev-ast (space-out-forms? prev-ast ast))
+                  (table.insert out ""))
+                (table.insert out (fnlfmt ast settings))
+                (set skip-next? false)))
+          (set prev-ast ast))
+        (set current-source-lines previous-source-lines))
       (table.insert out "")
       (let [formatted (table.concat out "\n")
             formatted (if (= false settings.trailing-newline?)

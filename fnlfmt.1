@@ -214,6 +214,11 @@ the line length limit.
 Strings are formatted using :colon-notation where possible, unless
 they consist entirely of punctuation.
 .PP
+Trailing comments stay on the line where they were written. When
+several key/value pairs in a table have trailing comments, they are
+aligned in one column; comments that start their own line keep their
+own line.
+.PP
 Top level forms may or may not have blank lines between them depending
 on whether the input code spaces them out. Functions defined inside a
 body form get empty lines spacing them out as well.

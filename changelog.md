@@ -1,5 +1,12 @@
 # History of user-visible changes
 
+## Unreleased
+
+* Keep trailing comments on the same line as the form, key, or value they
+  follow instead of moving them to their own line. When several entries in
+  a table have trailing comments, align them in one column. Comments that
+  were already on their own line keep their own line.
+
 ## 0.5.0 / 2026-11-12
 
 * Add `--diff`, which prints a unified diff for files that need formatting
