@@ -13,11 +13,17 @@
 
 (local fennel (require :fennel))
 (local config (require :config))
+(local classify (require :classify))
 (local unpack (or table.unpack _G.unpack))
 
-(local syntax (fennel.syntax))
-
 (local raw-mt {:__fennelview #$.raw :__tostring #$.raw})
+
+;; `tostring` on a Fennel list re-enters fennel.view without our options,
+;; so fall back to the classifier of the formatting run in progress.
+(var current-classifier nil)
+
+(fn inspector-classifier [inspector]
+  (or inspector.classifier current-classifier))
 
 (fn string? [ast]
   (and (= raw-mt (getmetatable ast)) (= :string (type ast.value))))
@@ -75,7 +81,9 @@ Returns the index of where the body of the function starts."
       (and (or (string? next-ast) (: (tostring next-ast) :find "^&"))
            (< inspector.line-length
               (+ indent 1 (last-line-length viewed) 1
-                 (length (tostring next-ast)) (length (fennel.view next-next)))))))
+                 (length (tostring next-ast))
+                 (length (fennel.view next-next
+                                      {:classifier (inspector-classifier inspector)})))))))
 
 (fn binding-comment [inspector c indent out start-indent]
   (when (and (< inspector.line-length (+ indent (length (tostring c))))
@@ -115,15 +123,6 @@ We want everything to be on one line as much as possible, (except for let)."
     (table.insert out close)
     (table.concat out)))
 
-(local fn-forms {:fn true :lambda true "λ" true :macro true})
-
-(fn fn-form? [callee]
-  "Forms which take a name and an argument list, including macros that follow
-the same naming convention (fn/a, λ/foo)."
-  (or (. fn-forms callee) (callee:find "^fn/") (callee:find "^λ/")))
-
-(local force-initial-newline {:do true :eval-compiler true})
-
 (local slength (or (-?> (rawget _G :utf8) (. :len))
                    ;; utf8-len from from fennel.view
                    #(accumulate [n 0 _ (string.gmatch $
@@ -133,48 +132,38 @@ the same naming convention (fn/a, λ/foo)."
 (fn view-init-body [t view inspector start-indent out callee]
   "Certain forms need special handling of their first few args. Returns the
 number of handled arguments."
-  (if (. force-initial-newline callee)
-      (table.insert out (.. "\n" (string.rep " " start-indent)))
-      (not= nil (. t 2))
-      (table.insert out " "))
-  (let [indent (if (. force-initial-newline callee)
-                   start-indent
-                   (+ start-indent (slength callee)))
-        ;; the handling of function args is very messy; sometimes they are
-        ;; handled here and sometimes they're down in view-fn-args; kinda bad.
-        second (if (and (?. syntax callee :binding-form?)
-                        (not= :unquote (tostring (. t 2 1))))
-                   (view-binding (. t 2) view inspector (+ indent 1)
-                                 (= :let callee)
-                                 (if (fennel.list? (. t 2))
-                                     (values "(" ")")
-                                     (values "[" "]")))
-                   (view (. t 2) inspector indent))
-        indent2 (+ indent (length (second:match "[^\n]*$")))]
-    (when (not= nil (. t 2))
-      (table.insert out second))
-    (if (fn-form? callee)
-        (view-fn-args t view inspector indent2 start-indent out)
-        3)))
-
-(fn match? [callee]
-  (. {:match true :case true :match-try true :case-try true} callee))
+  (let [classifier (inspector-classifier inspector)
+        force? (classify.force-newline? classifier callee)]
+    (if force? (table.insert out (.. "\n" (string.rep " " start-indent)))
+        (not= nil (. t 2)) (table.insert out " "))
+    (let [indent (if force? start-indent (+ start-indent (slength callee)))
+          ;; the handling of function args is very messy; sometimes they are
+          ;; handled here and sometimes they're down in view-fn-args; kinda bad.
+          second (if (and (classify.binding? classifier callee)
+                          (not= :unquote (tostring (. t 2 1))))
+                     (view-binding (. t 2) view inspector (+ indent 1)
+                                   (= :let callee)
+                                   (if (fennel.list? (. t 2))
+                                       (values "(" ")")
+                                       (values "[" "]")))
+                     (view (. t 2) inspector indent))
+          indent2 (+ indent (length (second:match "[^\n]*$")))]
+      (when (not= nil (. t 2))
+        (table.insert out second))
+      (if (classify.function? classifier callee)
+          (view-fn-args t view inspector indent2 start-indent out)
+          3))))
 
 (fn match-same-line? [inspector callee i out viewed t]
   ;; just don't even try if there's comments!
-  (and (match? callee) (= 0 (math.fmod i 2)) (not (any? t fennel.comment?))
+  (and (classify.match? (inspector-classifier inspector) callee)
+       (= 0 (math.fmod i 2)) (not (any? t fennel.comment?))
        (<= (+ (or (string.find viewed "\n") (length (viewed:match "[^\n]*$")))
               1 (last-line-length (. out (length out))))
            inspector.line-length)))
 
 (fn trailing-comment? [inspector viewed body-indent]
   (and (viewed:match "^; ") (<= body-indent inspector.line-length)))
-
-(local one-element-per-line-forms {:-> true
-                                   :->> true
-                                   :-?> true
-                                   :-?>> true
-                                   :if true})
 
 (fn fn-definition-pattern? [str]
   (or (str:match "^ *%(fn [^%[]") (str:match "^ *%(fn/")
@@ -211,7 +200,8 @@ number of handled arguments."
   (let [start-index (view-init-body t view inspector start-indent out callee)
         ;; do and if don't actually have special indentation but they do need
         ;; a newline after every form, so we can't use normal call formatting
-        indent (if (. one-element-per-line-forms callee)
+        indent (if (classify.one-per-line? (inspector-classifier inspector)
+                                           callee)
                    (+ start-indent (length callee))
                    start-indent)]
     (for [i (or start-index (+ (length t) 1)) (length t)]
@@ -266,7 +256,8 @@ number of handled arguments."
 
 (fn pairwise-if? [inspector t indent i view]
   (if (< (length (strip-comments t)) 5) false
-      (not= :if (tostring (. t 1))) false
+      (not (classify.conditional? (inspector-classifier inspector)
+                                  (tostring (. t 1)))) false
       (not (. t i)) true
       (< inspector.line-length
          (+ indent 1 (length (if-pair view (select i (unpack t)))))) false
@@ -291,32 +282,27 @@ number of handled arguments."
 (fn sweeten [t view inspector indent]
   (.. (. sugars (tostring (. t 1))) (view (. t 2) inspector (+ indent 1))))
 
-(local maybe-body {:-> true :->> true :-?> true :-?>> true :doto true :if true})
-
 (local renames {"#" :length "~=" :not= :lambda "λ"})
-
-(fn body-form? [callee]
-  (or (?. syntax callee :body-form?) (callee:find "%.with-")
-      (callee:find :^with-) (callee:find "%.def") (callee:find :^def)
-      (callee:find "^fn/") (callee:find "^λ/")))
 
 (fn view-list [t view inspector start-indent]
   (if (. sugars (tostring (. t 1)))
       (sweeten t view inspector start-indent)
-      (let [callee (view (. t 1) inspector (+ start-indent 1))
+      (let [classifier (inspector-classifier inspector)
+            callee (view (. t 1) inspector (+ start-indent 1))
             callee (or (. renames callee) callee)
             out ["(" callee]
-            indent (if (body-form? callee)
+            body? (classify.body? classifier callee)
+            indent (if body?
                        (+ start-indent 2)
                        (callee:find "\n")
                        (+ (last-line-length callee) 1)
                        (+ start-indent (length callee) 2))]
         ;; indent differently if it's calling a special form with body args
-        (if (body-form? callee)
+        (if body?
             (view-body t view inspector indent out callee)
             ;; in some cases we treat it differently depending on whether the
             ;; original code was multi-line or not
-            (. maybe-body callee)
+            (classify.maybe-body? classifier callee)
             (view-maybe-body t view inspector indent start-indent out callee)
             (view-call t view inspector indent out))
         (newline-if-ends-in-comment out indent)
@@ -400,6 +386,9 @@ When f returns a truthy value, recursively walks the children."
 (fn fnlfmt [ast ?settings]
   "Return a formatted representation of ast."
   (let [settings (or ?settings {})
+        classifier (classify.build settings)
+        previous current-classifier
+        _ (set current-classifier classifier)
         {&as list-mt : __fennelview} (getmetatable (fennel.list))
         ;; list's metamethod for fennelview is where the magic happens!
         _ (set list-mt.__fennelview view-list)
@@ -409,9 +398,11 @@ When f returns a truthy value, recursively walks the children."
                          {:empty-as-sequence? true
                           :escape-newlines? true
                           :line-length (or settings.line-length 80)
+                          :classifier classifier
                           : prefer-colon?})]
     ;; clean up after the metamethod patching
     (set list-mt.__fennelview __fennelview)
+    (set current-classifier previous)
     (assert ok? val)
     val))
 

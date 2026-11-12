@@ -9,13 +9,21 @@
 ;; changing `project-name` below.
 
 (local fennel (require :fennel))
+(local classify (require :classify))
 
 (local project-name :fnlfmt)
 (local config-filename (.. "." project-name ".fnl"))
 (local user-config-filename (.. project-name "/config.fnl"))
 (local env-var (.. (string.upper project-name) "_CONFIG"))
 
-(local defaults {:version 1 :style :default :line-length 80 :no-comments false})
+(local defaults {:version 1
+                 :style :default
+                 :line-length 80
+                 :no-comments false
+                 :extra-forms {}
+                 :form-patterns []
+                 :unknown-form-style :call
+                 :infer-macros? true})
 
 ;; Presets bundle defaults for the options that are currently implemented.
 ;; New presets are added here as the rest of the option catalog lands.
@@ -24,7 +32,12 @@
 (local valid-keys {:version :number
                    :style :string
                    :line-length :number
-                   :no-comments :boolean})
+                   :no-comments :boolean
+                   :forms :table
+                   :extra-forms :table
+                   :form-patterns :table
+                   :unknown-form-style :string
+                   :infer-macros? :boolean})
 
 (fn file-exists? [path]
   (let [f (io.open path :r)]
@@ -99,6 +112,38 @@
   (doto (icollect [key (pairs tbl)] key)
     (table.sort)))
 
+(fn style-names []
+  (table.concat (icollect [_ style (ipairs classify.styles)]
+                  (.. ":" style)) " "))
+
+(fn validate-forms [forms loc key]
+  (each [name style (pairs forms)]
+    (when (not= :string (type name))
+      (error (.. loc ": :" key " keys must be strings, got " (type name)) 0))
+    (when (not (classify.valid-style? style))
+      (error (.. loc ": :" key " :" name " has unknown style "
+                 (fennel.view style) "; valid styles: " (style-names))
+             0))))
+
+(fn validate-patterns [patterns loc]
+  (each [i pair (ipairs patterns)]
+    (when (or (not= :table (type pair)) (not= 2 (length pair)))
+      (error (.. loc ": :form-patterns entry " i
+                 " must be a [pattern style] pair") 0))
+    (let [pattern (. pair 1)
+          style (. pair 2)]
+      (when (not= :string (type pattern))
+        (error (.. loc ": :form-patterns entry " i
+                   " pattern must be a string, got " (type pattern))
+               0))
+      (when (not (pcall string.find "" pattern))
+        (error (.. loc ": :form-patterns entry " i
+                   " is not a valid Lua pattern: " pattern) 0))
+      (when (not (classify.valid-style? style))
+        (error (.. loc ": :form-patterns entry " i " has unknown style "
+                   (fennel.view style) "; valid styles: " (style-names))
+               0)))))
+
 (fn validate [config path]
   (let [source (fennel.ast-source config)
         loc (.. (or source.filename path) ":" (or source.line 1))]
@@ -123,7 +168,16 @@
                      0))
             (= key :line-length)
             (when (or (not= value (math.floor value)) (< value 20))
-              (error (.. loc ": :line-length must be an integer >= 20") 0))))))
+              (error (.. loc ": :line-length must be an integer >= 20") 0))
+            (or (= key :forms) (= key :extra-forms))
+            (validate-forms value loc key)
+            (= key :form-patterns)
+            (validate-patterns value loc)
+            (= key :unknown-form-style)
+            (when (not (classify.valid-style? value))
+              (error (.. loc ": unknown form style " (fennel.view value)
+                         "; valid styles: " (style-names))
+                     0))))))
   config)
 
 (fn resolve [filename ?options]
@@ -165,15 +219,26 @@ file, command line."
 (fn describe [filename ?options]
   "Render the effective settings and where each one came from."
   (let [(settings source path) (resolve filename ?options)
-        order [:version :style :line-length :no-comments]
+        order [:version
+               :style
+               :line-length
+               :no-comments
+               :forms
+               :extra-forms
+               :form-patterns
+               :unknown-form-style
+               :infer-macros?]
         width (accumulate [n 0 _ key (ipairs order)]
                 (math.max n (length key)))
         lines [(.. "fnlfmt configuration for " filename)
                (.. "config file: " (or path "none"))]]
     (each [_ key (ipairs order)]
-      (table.insert lines (.. "  :" key (string.rep " " (- width (length key)))
-                              "  " (fennel.view (. settings key)) "  ("
-                              (. source key) ")")))
+      (let [value (. settings key)
+            rendered (if (= nil value) "built-in" (fennel.view value))
+            origin (or (. source key) "built-in")]
+        (table.insert lines
+                      (.. "  :" key (string.rep " " (- width (length key)))
+                          "  " rendered "  (" origin ")"))))
     (table.concat lines "\n")))
 
 {: project-name

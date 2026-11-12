@@ -143,24 +143,24 @@
              (and (= 0 code)
                   (not= nil (out:find (.. "config file: " sub "/.fnlfmt.fnl") 1
                                       true))
-                  (not= nil (out:find ":line-length  60" 1 true)))))
+                  (not= nil (out:find ":line%-length%s+60")))))
     ;; FNLFMT_CONFIG takes precedence over discovered configs.
     (let [(out code) (run (.. "FNLFMT_CONFIG='" (.. root "/.fnlfmt.fnl")
                               "' ./fnlfmt --print-config '" (.. sub "/x.fnl")
                               "'"))]
       (check :cli/env-config
-             (and (= 0 code) (not= nil (out:find ":line-length  100" 1 true)))))
+             (and (= 0 code) (not= nil (out:find ":line%-length%s+100")))))
     (let [(out code) (run (.. "FNLFMT_CONFIG='" (.. root "/.fnlfmt.fnl")
                               "' ./fnlfmt --no-config --print-config '"
                               (.. sub "/x.fnl") "'"))]
       (check :cli/env-config-overridden
-             (and (= 0 code) (not= nil (out:find ":line-length  80" 1 true)))))
+             (and (= 0 code) (not= nil (out:find ":line%-length%s+80")))))
     ;; --config overrides FNLFMT_CONFIG.
     (let [(out code) (run (.. "FNLFMT_CONFIG='" (.. root "/.fnlfmt.fnl")
                               "' ./fnlfmt --config '" (.. sub "/.fnlfmt.fnl")
                               "' --print-config '" (.. sub "/x.fnl") "'"))]
       (check :cli/config-overrides-env
-             (and (= 0 code) (not= nil (out:find ":line-length  60" 1 true)))))
+             (and (= 0 code) (not= nil (out:find ":line%-length%s+60")))))
     ;; :line-length changes how calls are wrapped.
     (let [(out code) (run (.. "./fnlfmt --no-config '" (.. root "/long.fnl")
                               "'"))]
@@ -208,6 +208,91 @@
                     (not= nil (out:find "mutually exclusive" 1 true)))))
       (os.execute (.. "rm -rf '" root "'")))))
 
+(fn classification-tests []
+  (let [root (tmpdir)
+        file (fn [name contents] (write-into root name contents))
+        configure (fn [contents] (write-into root ".fnlfmt.fnl" contents))
+        format (fn [filename] (run (.. "./fnlfmt '" filename "'")))
+        expect-error (fn [name contents needle]
+                       (let [path (write-into root ".fnlfmt.fnl" contents)
+                             (out code) (run (.. "./fnlfmt --config '" path
+                                                 "' --print-config"))]
+                         (check name
+                                (and (= 1 code)
+                                     (not= nil (out:find needle 1 true))))))]
+    ;; Extra classifications add to the built-in table.
+    (let [f (file "twiddle.fnl"
+                  "(twiddle alpha\n         beta\n         gamma)\n")]
+      (let [(out code) (run (.. "./fnlfmt --no-config '" f "'"))]
+        (check :classify/default-call
+               (and (= 0 code) (= out "(twiddle alpha beta gamma)\n"))))
+      (configure "{:extra-forms {:twiddle :body}}\n")
+      (let [(out code) (format f)]
+        (check :classify/extra-body
+               (and (= 0 code) (= out "(twiddle alpha\n  beta\n  gamma)\n"))))
+      (configure "{:form-patterns [[\"^twiddle\" :body]]}\n")
+      (let [(out code) (format f)]
+        (check :classify/pattern-body
+               (and (= 0 code) (= out "(twiddle alpha\n  beta\n  gamma)\n"))))
+      (configure "{:unknown-form-style :body}\n")
+      (let [(out code) (format f)]
+        (check :classify/unknown-body
+               (and (= 0 code) (= out "(twiddle alpha\n  beta\n  gamma)\n")))))
+    ;; :forms replaces the built-in table instead of extending it.
+    (let [f (file "when.fnl" "(when true\n  (print 1)\n  (print 2))\n")]
+      (configure "{:forms {}}\n")
+      (let [(out code) (format f)]
+        (check :classify/forms-replace
+               (and (= 0 code) (= out "(when true (print 1) (print 2))\n")))))
+    ;; User patterns are checked before the built-in conventions.
+    (let [f (file "with.fnl"
+                  "(with-foo alpha\n          beta\n          gamma)\n")]
+      (configure "{:form-patterns [[\"^with-\" :call]]}\n")
+      (let [(out code) (format f)]
+        (check :classify/pattern-override
+               (and (= 0 code) (= out "(with-foo alpha beta gamma)\n"))))
+      (configure "{:infer-macros? false}\n")
+      (let [(out code) (format f)]
+        (check :classify/no-inference
+               (and (= 0 code) (= out "(with-foo alpha beta gamma)\n")))))
+    ;; The other styles map to the formatter's existing behaviors.
+    (let [f (file "function.fnl" "(my-fn foo [x y]\n  (print x))\n")]
+      (configure "{:extra-forms {:my-fn :function}}\n")
+      (let [(out code) (format f)]
+        (check :classify/function-style
+               (and (= 0 code) (= out "(my-fn foo [x y]\n  (print x))\n")))))
+    (let [f (file "binding.fnl" "(my-let [x 1 y 2]\n  (print x))\n")]
+      (configure "{:extra-forms {:my-let :binding}}\n")
+      (let [(out code) (format f)]
+        (check :classify/binding-style
+               (and (= 0 code) (= out "(my-let [x 1 y 2]\n  (print x))\n")))))
+    ;; Classification also drives the heuristic indenter.
+    (let [(result _) (indent.indent "(twiddle alpha\nbeta)\n"
+                                    {:extra-forms {:twiddle :body}})]
+      (check :classify/indent-body (= result "(twiddle alpha\n  beta)\n")))
+    (let [f (file "indent.fnl" "(twiddle alpha\nbeta)\n")]
+      (configure "{:extra-forms {:twiddle :body}}\n")
+      (let [(out code) (run (.. "./fnlfmt --indent '" f "'"))]
+        (check :classify/cli-indent
+               (and (= 0 code) (= out "(twiddle alpha\n  beta)\n")))))
+    ;; --print-config exposes the new keys.
+    (configure "{:extra-forms {:twiddle :body} :unknown-form-style :body}\n")
+    (let [(out code) (run (.. "./fnlfmt --print-config '"
+                              (.. root "/twiddle.fnl") "'"))]
+      (check :classify/print-config
+             (and (= 0 code) (not= nil (out:find ":extra-forms" 1 true))
+                  (not= nil (out:find "twiddle" 1 true))
+                  (not= nil (out:find ":unknown-form-style" 1 true)))))
+    (expect-error :classify/bad-form-style "{:extra-forms {:twiddle :bogus}}\n"
+                  "unknown style")
+    (expect-error :classify/bad-unknown-style "{:unknown-form-style :bogus}\n"
+                  "unknown form style")
+    (expect-error :classify/bad-pattern "{:form-patterns [[\"[\" :body]]}\n"
+                  "not a valid Lua pattern")
+    (expect-error :classify/bad-infer "{:infer-macros? 1}\n"
+                  "must be a boolean")
+    (os.execute (.. "rm -rf '" root "'"))))
+
 (each [_ name (ipairs (if (< 0 (length arg))
                           arg
                           cases))]
@@ -224,7 +309,8 @@
 
 (when (= 0 (length arg))
   (cli-tests)
-  (config-tests))
+  (config-tests)
+  (classification-tests))
 
 (print (: "%s passed, %s failed" :format pass (length failures)))
 (when (not= 0 (length failures))

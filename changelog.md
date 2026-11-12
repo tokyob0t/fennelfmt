@@ -7,6 +7,13 @@
   `--no-config`, or discovered from the nearest ancestor directory (falling
   back to `$XDG_CONFIG_HOME/fnlfmt/config.fnl`). Defaults still match
   upstream byte for byte.
+* Make form classification configurable with `:extra-forms` (extend the
+  built-in table), `:forms` (replace it), `:form-patterns` (ordered Lua
+  patterns), `:unknown-form-style` (default for unmatched forms), and
+  `:infer-macros?` (toggle the `with-`/`def`/`fn/`/`λ/` conventions).
+  Available styles are `:call`, `:body`, `:binding`, `:function`, `:match`,
+  `:conditional`, `:threading`, `:sequence`, `:block`, and `:maybe-body`.
+  The same classification drives `--indent`.
 * Add the `:line-length` and `:no-comments` settings, plus `--print-config`
   to show the effective values and which source provided each one.
 * Fail with a file-and-line diagnostic on unknown keys, bad types, parse

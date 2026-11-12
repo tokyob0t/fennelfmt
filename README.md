@@ -43,7 +43,11 @@ evaluated:
 {:version 1
  :style :default
  :line-length 80
- :no-comments false}
+ :no-comments false
+ :extra-forms {}
+ :form-patterns []
+ :unknown-form-style :call
+ :infer-macros? true}
 ```
 
 One config file is selected, without merging:
@@ -61,15 +65,49 @@ the file and line, and exit with status 1.
 
 Available settings:
 
-| Key            | Type    | Default    | Meaning                                  |
-|----------------|---------|------------|------------------------------------------|
-| `:version`     | number  | `1`        | Config format version; must be `1`.      |
-| `:style`       | string  | `:default` | Preset name. Only `:default` for now.    |
-| `:line-length` | number  | `80`       | Column after which calls are wrapped.    |
-| `:no-comments` | boolean | `false`    | Strip comments, like `--no-comments`.    |
+| Key                   | Type    | Default    | Meaning                                  |
+|-----------------------|---------|------------|------------------------------------------|
+| `:version`            | number  | `1`        | Config format version; must be `1`.      |
+| `:style`              | string  | `:default` | Preset name. Only `:default` for now.    |
+| `:line-length`        | number  | `80`       | Column after which calls are wrapped.    |
+| `:no-comments`        | boolean | `false`    | Strip comments, like `--no-comments`.    |
+| `:forms`              | table   | built-in   | Replace the built-in classification table. |
+| `:extra-forms`        | table   | `{}`       | Add or override classifications.         |
+| `:form-patterns`      | list    | `[]`       | Ordered `[pattern style]` pairs.         |
+| `:unknown-form-style` | string  | `:call`    | Style for forms that match nothing else. |
+| `:infer-macros?`      | boolean | `true`     | Infer macros from naming conventions.    |
+
+Each entry in `:forms` and `:extra-forms` maps a form name to a style:
+
+| Style        | Behavior                                                        |
+|--------------|-----------------------------------------------------------------|
+| `:call`      | Normal function call.                                           |
+| `:body`      | Body form; arguments after the first are indented as a body.    |
+| `:binding`   | Body form whose first argument is a binding table (`let`, `each`). |
+| `:function`  | Definition with a name and argument list (`fn`, `fn/a`).        |
+| `:match`     | Clause-pairing form (`match`, `case`).                          |
+| `:conditional` | Condition/result pairing (`if`).                              |
+| `:threading` | Arrow-like form with each step aligned (`->`).                  |
+| `:sequence`  | Body form with one argument per line, aligned.                  |
+| `:block`     | Body form that always starts on a new line (`do`).              |
+| `:maybe-body` | Body or call depending on the original layout.                 |
+
+`:forms` replaces the built-in table entirely; use `:extra-forms` to extend
+it. `:form-patterns` entries are checked before the built-in naming
+conventions, so a pattern can also override one of them. Setting
+`:infer-macros?` to `false` disables only those built-in conventions, not
+Fennel's own syntax table.
+
+```fennel
+{:extra-forms {:my/with-db :binding
+               :defcomponent :function}
+ :form-patterns [["^ui/" :body]]
+ :unknown-form-style :call}
+```
 
 Use `fnlfmt --print-config FILE` to see the effective settings and where each
-one came from.
+one came from. The repository's own `.fnlfmt.fnl` spells out every key and
+the full default classification table as a reference.
 
 ## Development
 
@@ -93,13 +131,14 @@ cannot be used. This means that `fnlfmt` should be treated as one
 implementation of the standard format rather than being canonical itself.
 
 By design the defaults are not configurable in the sense of changing how
-the formatter interprets code: formatting choices should be correct other
-than bugs or when new features are added to Fennel itself. The optional
-`.fnlfmt.fnl` file only adjusts presentation settings such as the line
-length; see [Configuration](#configuration). When it comes to where the
-line breaks are inserted, it tries its best, but there are certainly cases
-where a human could do better. Sometimes when it comes to line breaks it
-will defer to the existing code where possible.
+the formatter interprets standard Fennel: formatting choices should be
+correct other than bugs or when new features are added to Fennel itself.
+The optional `.fnlfmt.fnl` file adjusts presentation settings and lets
+third-party macros opt into the same layout rules; see
+[Configuration](#configuration). When it comes to where the line breaks are
+inserted, it tries its best, but there are certainly cases where a human
+could do better. Sometimes when it comes to line breaks it will defer to the
+existing code where possible.
 
 ## Known issues
 

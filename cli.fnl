@@ -148,7 +148,8 @@
                     (when (not= 1 (length filenames))
                       (usage-error "--indent takes exactly one filename"))
                     (io.stdout:write (pick-values 1
-                                                  (indent-file (. filenames 1)))))
+                                                  (indent-file (. filenames 1)
+                                                               options))))
           :fix-indent (each [_ filename (ipairs filenames)]
                         (fix filename indent-file))
           :check-indent (check-files filenames indent-file)
