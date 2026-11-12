@@ -3,28 +3,36 @@
 (set debug.traceback fennel.traceback)
 
 (local config (require :config))
+(local diff (require :diff))
 (local {: format-file : version} (require :fnlfmt))
 (local {: indent-file} (require :indentation))
 
 (fn help []
-  (print "Usage: fnlfmt [--no-comments] [--fix|--check] FILENAME...")
+  (print "Usage: fnlfmt [--no-comments] [--diff|--fix|--check] FILENAME...")
   (print "       fnlfmt [--no-comments] --indent FILENAME")
   (print "       fnlfmt [--fix-indent|--check-indent] FILENAME...")
   (print "       fnlfmt --print-config [FILENAME]")
   (print "")
-  (print "With --fix or --check, multiple files can be specified.")
+  (print "With --fix, --check, or --diff, multiple files can be specified.")
   (print "With --fix, formats all the files in-place;")
   (print "with --check, only checks if all the files are formatted and exits")
   (print "non-zero if any file needs formatting;")
+  (print "with --diff, prints a unified diff and exits non-zero if any file")
+  (print "needs formatting;")
   (print "otherwise prints the formatted file to stdout.")
   (print "")
   (print "Configuration is read from the nearest .fnlfmt.fnl, from")
   (print "$FNLFMT_CONFIG, or from ~/.config/fnlfmt/config.fnl.")
   (print "")
+  (print "Use - or --stdin to read from standard input.")
+  (print "")
   (print "The --indent family only fixes indentation, using heuristics instead")
   (print "of a full parser, which is useful for incomplete code in editors.")
   (print "")
   (print "  --no-comments   strip comments")
+  (print "  --diff          print a unified diff instead of rewriting files")
+  (print "  --stdin         read from standard input")
+  (print "  --quiet         suppress \"Not formatted\" messages")
   (print "  --config PATH   use PATH instead of searching for a config file")
   (print "  --no-config     ignore all config files")
   (print "  --print-config  print the effective configuration and exit")
@@ -40,6 +48,8 @@
 (var print-config? false)
 (var show-help? false)
 (var show-version? false)
+(var stdin? false)
+(var quiet? false)
 
 (fn usage-error [message]
   (io.stderr:write (.. "fnlfmt: " message "\n\n"))
@@ -48,8 +58,8 @@
 
 (fn set-mode [new-mode]
   (when (not= :format mode)
-    (usage-error (.. "only one of --fix, --check, --indent, --fix-indent, "
-                     "and --check-indent can be given")))
+    (usage-error (.. "only one of --fix, --check, --diff, --indent, "
+                     "--fix-indent, and --check-indent can be given")))
   (set mode new-mode))
 
 (var i 1)
@@ -69,10 +79,16 @@
         (set no-config? true)
         (= a "--print-config")
         (set print-config? true)
+        (= a "--stdin")
+        (set stdin? true)
+        (= a "--quiet")
+        (set quiet? true)
         (= a "--fix")
         (set-mode :fix)
         (= a "--check")
         (set-mode :check)
+        (= a "--diff")
+        (set-mode :diff)
         (= a "--indent")
         (set-mode :indent)
         (= a "--fix-indent")
@@ -101,10 +117,20 @@
 (when no-config?
   (set options.no-config true))
 
+(when stdin?
+  (when (< 0 (length filenames))
+    (usage-error "--stdin cannot be combined with filenames"))
+  (table.insert filenames "-"))
+
+(fn display-name [filename]
+  (if (= filename "-") "stdin" filename))
+
 (fn check-file [filename f]
   (if (select 2 (f filename options))
       (do
-        (io.stderr:write (string.format "Not formatted: %s\n" filename))
+        (when (not quiet?)
+          (io.stderr:write (string.format "Not formatted: %s\n"
+                                          (display-name filename))))
         false)
       true))
 
@@ -117,9 +143,26 @@
 (fn fix [filename f]
   (let [(new changed?) (f filename options)]
     (when changed? ; prevent unnecessary writes
-      (let [f (assert (io.open filename :w))]
-        (f:write new)
-        (f:close)))))
+      (let [(file err) (io.open filename :w)]
+        (when (not file)
+          (error (or err (.. "cannot write " filename)) 0))
+        (file:write new)
+        (file:close)))))
+
+(fn check-writable [filenames]
+  (each [_ filename (ipairs filenames)]
+    (when (= filename "-")
+      (error "cannot write to stdin" 0))))
+
+(fn diff-files [filenames]
+  (var changed? false)
+  (each [_ filename (ipairs filenames)]
+    (let [(formatted file-changed? original) (format-file filename options)]
+      (when file-changed?
+        (set changed? true)
+        (io.stdout:write (diff.unified original formatted
+                                       (display-name filename))))))
+  (os.exit (if changed? 1 0)))
 
 (fn format-file-to-stdout [filename]
   (io.stdout:write (pick-values 1 (format-file filename options))))
@@ -141,17 +184,22 @@
         (when (= 0 (length filenames))
           (usage-error "no filenames given"))
         (case mode
-          :fix (each [_ filename (ipairs filenames)]
-                 (fix filename format-file))
+          :fix (do
+                 (check-writable filenames)
+                 (each [_ filename (ipairs filenames)]
+                   (fix filename format-file)))
           :check (check-files filenames format-file)
+          :diff (diff-files filenames)
           :indent (do
                     (when (not= 1 (length filenames))
                       (usage-error "--indent takes exactly one filename"))
                     (io.stdout:write (pick-values 1
                                                   (indent-file (. filenames 1)
                                                                options))))
-          :fix-indent (each [_ filename (ipairs filenames)]
-                        (fix filename indent-file))
+          :fix-indent (do
+                        (check-writable filenames)
+                        (each [_ filename (ipairs filenames)]
+                          (fix filename indent-file)))
           :check-indent (check-files filenames indent-file)
           _ (do
               (when (not= 1 (length filenames))

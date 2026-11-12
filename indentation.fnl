@@ -140,8 +140,15 @@ looked up in the table of lines. Returns the column number to indent to."
 
 (fn indent-file [filename ?options]
   (let [options (or ?options {})
-        settings (or options.settings (config.resolve filename options))]
-    (with-open [f (assert (io.open filename))]
-      (indent (f:read :*all) settings))))
+        settings (or options.settings (config.resolve filename options))
+        (f err) (if (= filename "-")
+                    (values io.stdin nil)
+                    (io.open filename :r))]
+    (when (not f)
+      (error (or err (.. "cannot read " filename)) 0))
+    (let [contents (f:read :*all)]
+      (when (not= f io.stdin)
+        (f:close))
+      (indent contents settings))))
 
 {: indent : indent-file : indentation}
