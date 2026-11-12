@@ -45,7 +45,7 @@ The indentation for `fn` and `lambda` are similar, except they accept an
 optional name before their arglist.
 
 Third-party macros will be treated this way if their name starts with
-`def` or `with-`.
+`def`, `with-`, `fn/`, or `λ/`.
 
 Finally `if` and the `case` family are treated differently; if possible it
 will attempt to pair off their pattern/condition clauses with the body

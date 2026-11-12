@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* Treat forms whose name starts with `fn/` or `λ/` as function definitions,
+  so macros like `fn/a` get their argument list on the first line and their
+  body on separate lines. This matches how `with-` and `def` forms were
+  already handled.
 * `--check` and `--check-indent` now exit with status 1 when a file needs
   formatting; previously they always exited 0.
 * `--indent` and `--fix-indent` no longer drop the final line of a file that

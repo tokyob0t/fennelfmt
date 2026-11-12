@@ -24,3 +24,23 @@ encountering an error before propagating it."
    (if ,tmp
        (-?> ,el ,(unpack els))
        ,tmp))
+
+(macro fn/a [name args ...]
+  `(fn ,name ,args ,...))
+
+(fn/a example [x]
+  (print x)
+  (+ x 1))
+
+(fn/a []
+  :example)
+
+(λ/a anonymous [y]
+  (print y))
+
+;; Names that merely start with "fn-" are not function definitions.
+(fn fn-helper [x]
+  x)
+
+(fn use-fn-helper []
+  (fn-helper nil))
