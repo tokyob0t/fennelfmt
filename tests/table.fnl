@@ -14,6 +14,9 @@
  ;; has a comment at the end
  }
 
+(local this-value-is-a-key-also 123456789)
+{: this-value-is-a-key-also}
+
 {:another key : kv3 : and-one-more}
 
 (global themes {:stone {:0 96

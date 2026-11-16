@@ -136,7 +136,7 @@ inside skipped forms break a run and are left untouched."
                   (if (and (code:match "%S") (not (ends-with-opener? code)))
                       (table.insert run
                                     {:line i
-                                     :code code
+                                     : code
                                      :comment (string.sub line start)})
                       (flush)))
                 (flush)))))
@@ -447,8 +447,23 @@ number of handled arguments."
           (string.rep " " indent) x)
       x))
 
+(fn prefer-colon? [s]
+  ;; it has to be a legal colon-string, but it shouldn't be *just* punctuation
+  (and (s:find "^[-%w?^_!$%&*+./|<=>]+$")
+       (not (s:find "^[-?^_!$%&*+./@|<=>%\\]+$"))))
+
+(fn key-string [k]
+  "String name of a table key. Keys written as `:foo` are wrapped by parse-form
+to preserve their original notation, so unwrap them here."
+  (if (string? k) k.value
+      (= :string (type k)) k))
+
 (fn shorthand-pair? [k v]
-  (and (= :string (type k)) (fennel.sym? v) (= k (tostring v))))
+  "True when `v` is a symbol whose name is the table key `k`. In that case
+`{:foo foo}` can be written as `{: foo}`."
+  (and (fennel.sym? v)
+       (let [name (tostring v)]
+         (and (= (key-string k) name) (prefer-colon? name)))))
 
 (fn view-pair [t view inspector indent mt key key-comments]
   (let [val (. t key)
@@ -534,7 +549,7 @@ know what to do with : foo shorthand notation, and it doesn't emit comments."
             (set has-trailing? true)
             (each [_ c (ipairs trailing)]
               (table.insert previous.trailing c)))
-          (table.insert pair-records {:text text :trailing []})
+          (table.insert pair-records {: text :trailing []})
           (set prev-line (line val)))))
     (each [_ c (ipairs (or (?. mt :comments :last) []))]
       (if (and (< 0 (length pair-records)) (comment-trailing? c prev-line))
@@ -575,11 +590,6 @@ When f returns a truthy value, recursively walks the children."
         _ (setmetatable form {:__fennelview view-kv})))
     true))
 
-(fn prefer-colon? [s]
-  ;; it has to be a legal colon-string, but it shouldn't be *just* punctuation
-  (and (s:find "^[-%w?^_!$%&*+./|<=>]+$")
-       (not (s:find "^[-?^_!$%&*+./@|<=>%\\]+$"))))
-
 (fn skip-comment? [ast]
   "Recognize the new skip comment and the legacy fnlfmt one."
   (and (fennel.comment? ast)
@@ -602,7 +612,7 @@ When f returns a truthy value, recursively walks the children."
                          {:empty-as-sequence? true
                           :escape-newlines? true
                           :line-length (or settings.line-length 80)
-                          :classifier classifier
+                          : classifier
                           : prefer-colon?})]
     ;; clean up after the metamethod patching
     (set list-mt.__fennelview __fennelview)
@@ -638,7 +648,7 @@ When f returns a truthy value, recursively walks the children."
                      (fennel.parser filename
                                     {:comments (not no-comments)
                                      :plugins [{:name "fennelfmt"
-                                                :parse-form parse-form
+                                                : parse-form
                                                 :versions "^1%."}]}))
           out []
           skipped-elements {}]

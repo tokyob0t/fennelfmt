@@ -32,7 +32,7 @@ Offsets are allowed to be zero, but not both."
       (when (and (not (and (= d 0) (= e 0))) (<= (+ i d) n) (<= (+ j e) m)
                  (= (. a (+ i d)) (. b (+ j e)))
                  (or (not best) (< (+ d e) (+ (. best :d) (. best :e)))))
-        (set best {:d d :e e}))))
+        (set best {: d : e}))))
   best)
 
 (fn build-edits [a b]
@@ -43,7 +43,7 @@ Offsets are allowed to be zero, but not both."
     (var j 1)
 
     (fn add [op old-line new-line text]
-      (table.insert edits {:op op :old old-line :new new-line :text text}))
+      (table.insert edits {: op :old old-line :new new-line : text}))
 
     (while (or (<= i n) (<= j m))
       (if (and (<= i n) (<= j m) (= (. a i) (. b j)))

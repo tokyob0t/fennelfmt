@@ -93,7 +93,7 @@ already validated by `config`, so this only fills in defaults."
                      (combine patterns default-patterns)
                      patterns)]
     {:forms (merge (or settings.forms default-forms) settings.extra-forms)
-     :patterns patterns
+     : patterns
      :unknown (or settings.unknown-form-style :call)
      :indent (or settings.indent 2)
      :align-calls? (if (= nil settings.align-calls?)
