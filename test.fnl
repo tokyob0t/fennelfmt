@@ -1,4 +1,5 @@
 (local fmt (require :fennelfmt))
+(local fennel (require :fennel))
 (local config (require :config))
 (local diff (require :diff))
 (local indent (require :indentation))
@@ -315,6 +316,42 @@
                   "must be a boolean")
     (os.execute (.. "rm -rf '" root "'"))))
 
+(fn table-tests []
+  (let [root (tmpdir)
+        format (fn [contents]
+                 (let [f (write-into root "table.fnl" contents)]
+                   (fmt.format-file f {:no-config true})))]
+    ;; Long form collapses to the shorthand when the key names the value.
+    (check :table/shorthand
+           (= (format "{:this-value-is-a-key-also this-value-is-a-key-also}\n")
+              "{: this-value-is-a-key-also}\n"))
+    (check :table/shorthand-quoted-key
+           (= (format "{\"foo\" foo}\n") "{: foo}\n"))
+    (check :table/shorthand-dotted
+           (= (format "{:foo.bar foo.bar}\n") "{: foo.bar}\n"))
+    (check :table/shorthand-idempotent
+           (let [once (format "{:foo foo}\n")]
+             (= once (format once))))
+    ;; Only a symbol with the same name as the key may use the shorthand.
+    (check :table/keep-keyword-value
+           (= (format "{:foo :foo}\n") "{:foo :foo}\n"))
+    (check :table/keep-different-value
+           (= (format "{:foo bar}\n") "{:foo bar}\n"))
+    (check :table/keep-gensym (= (format "{:foo# foo#}\n") "{:foo# foo#}\n"))
+    (check :table/keep-punctuation (= (format "{:? ?}\n") "{:? ?}\n"))
+    ;; Comments between the key and the value survive the rewrite.
+    (check :table/shorthand-trailing-comment
+           (= (format "{:foo foo ;; note\n :bar bar}\n")
+              "{: foo ;; note\n : bar}\n"))
+    (check :table/shorthand-key-comment
+           (= (format "{:foo ;; note\n foo}\n") "{: ;; note\n foo}\n"))
+    ;; The library also formats ASTs whose keys were never wrapped.
+    (let [parse (fennel.parser (fennel.stringStream "{:foo foo}"))
+          (ok? form) (parse)]
+      (check :table/shorthand-library
+             (and ok? (= (fmt.fennelfmt form) "{: foo}"))))
+    (os.execute (.. "rm -rf '" root "'"))))
+
 (fn option-tests []
   (let [root (tmpdir)
         file (fn [name contents] (write-into root name contents))
@@ -549,6 +586,7 @@
   (cli-tests)
   (config-tests)
   (classification-tests)
+  (table-tests)
   (option-tests)
   (io-tests)
   (comment-tests))

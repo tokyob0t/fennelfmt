@@ -1,5 +1,14 @@
 # History of user-visible changes
 
+## Unreleased
+
+* Emit table shorthand for long-form pairs whose key matches the value, so
+  `{:foo foo}` becomes `{: foo}`. Keys written in shorthand form were already
+  preserved, but the original-notation preservation added in 2024 wrapped
+  long-form string keys and hid them from the shorthand detector. Pairs whose
+  value is not a matching symbol (including gensym names such as `foo#`) are
+  left alone.
+
 ## 0.6.0 / 2026-11-12
 
 * Rename the project to `fennelfmt`. The binary, Lua module, and man page are
