@@ -692,4 +692,4 @@ When f returns a truthy value, recursively walks the children."
                           formatted)]
         (values formatted (not= formatted original) original)))))
 
-{: fennelfmt : format-file :version :0.6.0}
+{: fennelfmt : format-file :version :0.6.1}

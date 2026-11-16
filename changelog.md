@@ -1,6 +1,6 @@
 # History of user-visible changes
 
-## Unreleased
+## 0.6.1 / 2026-11-16
 
 * Emit table shorthand for long-form pairs whose key matches the value, so
   `{:foo foo}` becomes `{: foo}`. Keys written in shorthand form were already
